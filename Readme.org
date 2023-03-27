@@ -1,0 +1,68 @@
+#+STARTUP: overview 
+#+PROPERTY: header-args :comments yes :results silent
+#+OPTIONS: \n:t
+* Nova
+Nova is a simple and efficient statically typed programming language. Currently under development.
+* Syntax
+** Imports
+#+BEGIN_SRC
+import "file.nova"
+#+END_SRC
+** Variable declaration
+#+BEGIN_SRC
+var a = 0;
+var b : int = 0;
+#+END_SRC
+** Function declaration
+#+BEGIN_SRC
+fun double(a : int) -> int {
+	return a * a;
+}
+#+END_SRC
+** Structure declaration
+#+BEGIN_SRC
+struct GameObject {}
+#+END_SRC
+** Comments
+#+BEGIN_SRC
+// This is a simple comment
+/* 
+This 
+is 
+a 
+multiline 
+comment 
+*/
+#+END_SRC
+** Polymorphism
+#+BEGIN_SRC
+struct Player {
+	using GameObject;
+	GameObject object;
+	fun update() -> void {}
+}
+
+fun game_object_create(GameObject object) {}
+Player player = Player {};
+game_object_create(player);
+#+END_SRC
+** Arrays
+#+BEGIN_SRC
+var arr1[4] : int;
+var arr2[4] : int {};
+#+END_SRC
+** Loops
+#+BEGIN_SRC
+for var i = 0; i < 10; ++i {}
+for var i = 0; i < 10; ++i outer { // named loop
+	for var j = 0; j < 10; ++j {
+		break outer;
+	}
+}
+
+foreach var v in arr1 {}
+foreach var v, i in arr2 {}
+
+while true {}
+do {} while true;
+#+END_SRC

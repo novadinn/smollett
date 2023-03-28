@@ -6,13 +6,28 @@
 #include <vector>
 #include <cstdio>
 
-std::vector<Token> tokenizer_scan(FILE* fp);
-Token tokenizer_read_token();
-int tokenizer_read_int(char c);
+struct Lexer {
+    char* source;
+    int length;
+    int index;
 
-char next_letter();
-void put_back(char c);
-char next_letter_skip();
-char char_pos(char *s, char c);
+    int line;
+
+    char putback;
+};
+
+Lexer* lexer_create(char* source, int length);
+void lexer_delete(Lexer* lexer);
+
+std::vector<Token> lexer_scan(char* src, int length);
+Token lexer_read_token(Lexer* lexer);
+int lexer_read_int(Lexer* lexer, char c);
+int lexer_read_identifier(Lexer* lexer, char c, char* buf);
+TokenType lexer_read_keyword(Lexer* lexer, char* s);
+
+char lexer_next_letter(Lexer* lexer);
+char lexer_next_letter_skip(Lexer* lexer);
+
+char char_pos(char* s, char c);
 
 #endif // READ_H

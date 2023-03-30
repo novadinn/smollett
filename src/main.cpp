@@ -7,13 +7,20 @@
 #include <cstring>
 
 const char *tokstr[] = { "NONE", "EOF",
-    ";",
-    "=", "==", "!=", "<", ">", "<=", ">=",
-    "+", "-", "*", "/",
-    "print",
-    "ident",
-    "int",
-    "intlit" };
+	"+", "-",
+	"*", "/",
+	"==" , "!=",
+	"<", ">", "<=", ">=",
+	"intlit", "charlit", "strlit", ";", "=", "ident",
+	"{", "}", "(", ")",
+	"[", "]",
+	"if", "elif", "else", "while", "for", "do", "int",
+	"print"};
+
+extern std::vector<int> tokens_intlit;
+extern std::vector<char> tokens_charlit;
+extern std::vector<char*> tokens_strlit;
+extern std::vector<char*> tokens_ident;
 
 bool file_exists_p(const char* path);
 bool read_file(const char* path, char** buf);
@@ -41,18 +48,32 @@ int main(int argc, char** argv) {
 	exit(1);
     }
     int len = strlen(buf);
+
+    tokens_intlit_init(0);
+    tokens_charlit_init(0);
+    tokens_strlit_init(0);
+    tokens_ident_init(0);
     
     std::vector<Token> tokens = lexer_scan(buf, len);
     for(int i = 0; i < tokens.size(); ++i) {
 	Token token = tokens[i];
 	printf("Token %s", tokstr[token.type]);
 	if(token.type == T_INTLIT)
-	    printf(", value %d", token.int_value);
+	    printf(", value %d", tokens_intlit[token.table_index]);
+	else if(token.type == T_CHARLIT)
+	    printf(", value %c", tokens_charlit[token.table_index]);
+	else if(token.type == T_STRLIT)
+	    printf(", value %s", tokens_strlit[token.table_index]);
 	else if(token.type == T_IDENT)
-	    printf(", name %s", token.identifier);
+	    printf(", name %s", tokens_ident[token.table_index]);
 	printf("\n");
     }
 
+    tokens_intlit_clear();
+    tokens_charlit_clear();
+    tokens_strlit_clear();
+    tokens_ident_clear();
+    
     free(buf);
     
     end = clock();

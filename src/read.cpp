@@ -6,13 +6,20 @@
 #include <cstring>
 #include <ctype.h>
 
+#define IDENTIFIER_MAX_LENGTH 255
+#define MAX_TEXT_LENGTH 2048
+
+std::vector<int> tokens_intlit;
+std::vector<char> tokens_charlit;
+std::vector<char*> tokens_strlit;
+std::vector<char*> tokens_ident;
+
 Lexer* lexer_create(char* source, int length) {
     Lexer* lexer = (Lexer*)malloc(sizeof(*lexer));
     lexer->source = source;
     lexer->length = length;
     lexer->index = 0;
     lexer->line = 0;
-    lexer->putback = 0;
     
     return lexer;
 }
@@ -45,14 +52,23 @@ Token lexer_read_token(Lexer* lexer) {
     case EOF: {
 	token.type = TokenType::T_EOF;
     } break;
-    case ';': {
-	token.type = TokenType::T_SEMI;
+    case '+': {
+	token.type = TokenType::T_PLUS;
+    } break;
+    case '-': {
+	token.type = TokenType::T_MINUS;
+    } break;
+    case '*': {
+	token.type = TokenType::T_STAR;
+    } break;
+    case '/': {
+	token.type = TokenType::T_SLASH;
     } break;
     case '=': {
 	if((c = lexer_next_letter(lexer)) == '=') {
 	    token.type = TokenType::T_EQ;
 	} else {
-	    lexer->putback = c;
+	    lexer->index--;
 	    token.type = TokenType::T_ASSIGN;
 	}
     } break;
@@ -68,7 +84,7 @@ Token lexer_read_token(Lexer* lexer) {
 	if((c = lexer_next_letter(lexer)) == '=') {
 	    token.type = TokenType::T_LE;
 	} else {
-	    lexer->putback = c;
+	    lexer->index--;
 	    token.type = TokenType::T_LT;
 	}
     } break;
@@ -76,26 +92,48 @@ Token lexer_read_token(Lexer* lexer) {
 	if((c = lexer_next_letter(lexer)) == '=') {
 	    token.type = TokenType::T_GE;
 	} else {
-	    lexer->putback = c;
+	    lexer->index--;
 	    token.type = TokenType::T_GT;
 	}
     } break;
-    case '+': {
-	token.type = TokenType::T_PLUS;
+    case ';': {
+	token.type = TokenType::T_SEMI;
     } break;
-    case '-': {
-	token.type = TokenType::T_MINUS;
+    case '{': {
+	token.type = TokenType::T_LBRACE;
     } break;
-    case '*': {
-	token.type = TokenType::T_STAR;
+    case '}': {
+	token.type = TokenType::T_RBRACE;
     } break;
-    case '/': {
-	token.type = TokenType::T_SLASH;
+    case '(': {
+	token.type = TokenType::T_LPAREN;
+    } break;
+    case ')': {
+	token.type = TokenType::T_RPAREN;
+    } break;
+    case '[': {
+	token.type = TokenType::T_LBRACK;
+    } break;
+    case ']': {
+	token.type = TokenType::T_RBRACK;
+    } break;
+    case '\'': {
+	token.type = TokenType::T_CHARLIT;
+	tokens_charlit_push(&token, lexer_read_char(lexer));
+	
+	if(lexer_next_letter(lexer) != '\'') {
+	    printf("nova: exprected '\\'' at end of char literal\n");
+	    exit(1);
+	}
+    } break;
+    case '"': {
+	token.type =  T_STRLIT;
+	tokens_strlit_push(&token, lexer_read_string(lexer));
     } break;
     default: {
 	if(isdigit(c)) {
 	    token.type = TokenType::T_INTLIT;
-	    token.int_value = lexer_read_int(lexer, c);
+	    tokens_intlit_push(&token, lexer_read_int(lexer, c));
 	} else if(isalpha(c) || c == '_') {
 	    char buf[IDENTIFIER_MAX_LENGTH];
 	    TokenType type;
@@ -110,7 +148,9 @@ Token lexer_read_token(Lexer* lexer) {
 	    // printf("nova: unrecognised symbol %s on line %d\n", buf, lexer->line);
 	    // exit(1);
 	    token.type = TokenType::T_IDENT;
-	    strcpy(token.identifier, buf);
+	    char* ident = (char*)malloc(sizeof(*ident) * IDENTIFIER_MAX_LENGTH);
+	    strcpy(ident, buf);
+	    tokens_ident_push(&token, ident);
 	    break;
 	} else {
 	    printf("nova: unrecognised character %c on line %d\n", c, lexer->line);
@@ -132,8 +172,52 @@ int lexer_read_int(Lexer* lexer, char c) {
 
     // NOTE: we need to put it back since we have already readed next character, so
     // next_letter cannot read it again, we need to force if to do so
-    lexer->putback = c;
+    lexer->index--;
     return val;
+}
+
+char lexer_read_char(Lexer* lexer) {
+    char c;
+    
+    c = lexer_next_letter(lexer);
+    if (c == '\\') {
+	switch(c = lexer_next_letter(lexer)) {
+	case 'a':  return '\a';
+	case 'b':  return '\b';
+	case 'f':  return '\f';
+	case 'n':  return '\n';
+	case 'r':  return '\r';
+	case 't':  return '\t';
+	case 'v':  return '\v';
+	case '\\': return '\\';
+	case '"':  return '"' ;
+	case '\'': return '\'';
+	default:
+	    printf("unknown escape sequence %d\n", c);
+	    exit(1);
+	}
+    }
+
+    return c;
+}
+
+char* lexer_read_string(Lexer* lexer) {
+    int i;
+    char c;
+    char* buf = (char*)malloc(sizeof(buf) * MAX_TEXT_LENGTH);
+
+    for(i = 0; i < MAX_TEXT_LENGTH - 1; ++i) {
+	if ((c = lexer_read_char(lexer)) == '"') {
+	    buf[i] = 0;
+	    return buf;
+	}
+	buf[i] = c;
+    }
+
+    printf("nova: string literal too long on line%d\n", lexer->line);
+    exit(1);
+    
+    return NULL;
 }
 
 int lexer_read_identifier(Lexer* lexer, char c, char* buf) {
@@ -149,7 +233,7 @@ int lexer_read_identifier(Lexer* lexer, char c, char* buf) {
 	c = lexer_next_letter(lexer);
     }
 
-    lexer->putback = c;
+    lexer->index--;
     buf[i] = '\0';
     return i;
 }
@@ -159,10 +243,28 @@ TokenType lexer_read_keyword(Lexer* lexer, char* s) {
     case 'i': {
 	if(!strcmp(s, "int"))
 	    return TokenType::T_INT;
+	if(!strcmp(s, "if"))
+	    return TokenType::T_IF;
+	if(!strcmp(s, "elif"))
+	    return TokenType::T_ELIF;
+	if(!strcmp(s, "else"))
+	    return TokenType::T_ELSE;
     } break;
     case 'p': {
 	if(!strcmp(s, "print"))
 	    return TokenType::T_PRINT;
+    } break;
+    case 'w': {
+	if(!strcmp(s, "while"))
+	    return TokenType::T_WHILE;
+    } break;
+    case 'f': {
+	if(!strcmp(s, "for"))
+	    return TokenType::T_FOR;
+    } break;
+    case 'd': {
+	if(!strcmp(s, "do"))
+	    return TokenType::T_DO;
     } break;
     };
 
@@ -172,11 +274,11 @@ TokenType lexer_read_keyword(Lexer* lexer, char* s) {
 char lexer_next_letter(Lexer* lexer) {
     char c;
 
-    if(lexer->putback) {
-	c = lexer->putback;
-	lexer->putback = 0;
-	return c;
-    }
+    // if(lexer->putback) {
+    // 	c = lexer->putback;
+    // 	lexer->putback = 0;
+    // 	return c;
+    // }
 
     c = lexer->source[lexer->index++];
     if(c == '\n')
@@ -199,4 +301,54 @@ char char_pos(char* s, char c) {
     
     p = strchr(s, c);
     return (p ? p - s : -1);
+}
+
+void tokens_intlit_init(int length) {
+    tokens_intlit.reserve(length);
+}
+void tokens_intlit_push(Token* token, int val) {
+    tokens_intlit.push_back(val);
+    token->table_index = tokens_intlit.size()-1;
+}
+void tokens_intlit_clear() {
+    tokens_intlit.clear();
+}
+
+void tokens_charlit_init(int length) {
+    tokens_charlit.reserve(length);
+}
+void tokens_charlit_push(Token* token, char val) {
+    tokens_charlit.push_back(val);
+    token->table_index = tokens_charlit.size()-1;
+}
+void tokens_charlit_clear() {
+    tokens_charlit.clear();
+}
+
+void tokens_ident_init(int length) {
+    tokens_ident.reserve(length);
+}
+void tokens_ident_push(Token* token, char* val) {
+    tokens_ident.push_back(val);
+    token->table_index = tokens_ident.size()-1;
+}
+void tokens_ident_clear() {
+    for(int i = 0; i < tokens_ident.size(); ++i) {
+	free(tokens_ident[i]);
+    }
+    tokens_ident.clear();
+}
+
+void tokens_strlit_init(int length) {
+    tokens_strlit.reserve(length);
+}
+void tokens_strlit_push(Token* token, char* val) {
+    tokens_strlit.push_back(val);
+    token->table_index = tokens_strlit.size()-1;
+}
+void tokens_strlit_clear() {
+    for(int i = 0; i < tokens_strlit.size(); ++i) {
+	free(tokens_strlit[i]);
+    }
+    tokens_strlit.clear();
 }

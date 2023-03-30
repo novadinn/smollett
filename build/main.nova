@@ -1,4 +1,15 @@
-print(2 + 3 * 5 - 8 / 3);
-print(1 < 2);
-print('a');
-print("oleg");
+
+fun mult(a : int, b : int) : int {
+    return a * b;
+}
+
+fun loop(n : int) : int {
+    for var i = 0; i < n; ++i {
+    	print(i);
+    }
+}
+
+fun main() : void {
+    print(mult(2, 5));
+    loop(12);
+}

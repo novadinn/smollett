@@ -1,7 +1,6 @@
 #ifndef TOKEN_H
 #define TOKEN_H
 
-// import, foreach, continue, return, break, struct
 enum TokenType {
     T_NONE = 0, T_EOF,
     // +    -
@@ -13,13 +12,15 @@ enum TokenType {
     // <  >     <=    >=
     T_LT, T_GT, T_LE, T_GE,
     //        ;       =
-    T_INTLIT, T_CHARLIT, T_STRLIT, T_SEMI, T_ASSIGN, T_IDENT,
+    T_INTLIT, T_CHARLIT, T_STRLIT, T_SEMI, T_COLON, T_COMMA, T_ASSIGN, T_IDENT,
     // {      }         (         )
     T_LBRACE, T_RBRACE, T_LPAREN, T_RPAREN,
     // [      ]        
     T_LBRACK, T_RBRACK,
     // Keywords
-    T_IF, T_ELIF, T_ELSE, T_WHILE, T_FOR, T_DO, T_INT,
+    T_IMPORT, T_STRUCT, T_VAR, T_FUN,
+    T_IF, T_ELSE, T_WHILE, T_FOR, T_DO, T_RETURN, T_BREAK, T_CONTINUE,
+    T_CONST, T_INT, T_CHAR, T_FLOAT,
     T_PRINT
 };
 

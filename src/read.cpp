@@ -99,6 +99,12 @@ Token lexer_read_token(Lexer* lexer) {
     case ';': {
 	token.type = TokenType::T_SEMI;
     } break;
+    case ':': {
+	token.type = TokenType::T_COLON;
+    } break;
+    case ',': {
+	token.type = TokenType::T_COMMA;
+    } break;
     case '{': {
 	token.type = TokenType::T_LBRACE;
     } break;
@@ -239,16 +245,17 @@ int lexer_read_identifier(Lexer* lexer, char c, char* buf) {
 }
 
 TokenType lexer_read_keyword(Lexer* lexer, char* s) {
+    // TODO: import, struct, var, fun, return, break, continue, const, char, float
     switch(*s) {
     case 'i': {
 	if(!strcmp(s, "int"))
 	    return TokenType::T_INT;
 	if(!strcmp(s, "if"))
 	    return TokenType::T_IF;
-	if(!strcmp(s, "elif"))
-	    return TokenType::T_ELIF;
 	if(!strcmp(s, "else"))
 	    return TokenType::T_ELSE;
+	if(!strcmp(s, "import"))
+	    return TokenType::T_IMPORT;
     } break;
     case 'p': {
 	if(!strcmp(s, "print"))
@@ -259,12 +266,40 @@ TokenType lexer_read_keyword(Lexer* lexer, char* s) {
 	    return TokenType::T_WHILE;
     } break;
     case 'f': {
+	if(!strcmp(s, "float"))
+	    return TokenType::T_FLOAT;
 	if(!strcmp(s, "for"))
 	    return TokenType::T_FOR;
+	if(!strcmp(s, "fun"))
+	    return TokenType::T_FUN;
     } break;
     case 'd': {
 	if(!strcmp(s, "do"))
 	    return TokenType::T_DO;
+    } break;
+    case 's': {
+	if(!strcmp(s, "struct"))
+	    return TokenType::T_STRUCT;
+    } break;
+    case 'v': {
+	if(!strcmp(s, "var"))
+	    return TokenType::T_VAR;
+    } break;
+    case 'r': {
+	if(!strcmp(s, "return"))
+	    return TokenType::T_RETURN;
+    } break;
+    case 'b': {
+	if(!strcmp(s, "break"))
+	    return TokenType::T_BREAK;
+    } break;
+    case 'c': {
+	if(!strcmp(s, "char"))
+	    return TokenType::T_CHAR;
+	if(!strcmp(s, "const"))
+	    return TokenType::T_CONST;
+	if(!strcmp(s, "continue"))
+	    return TokenType::T_CONTINUE;
     } break;
     };
 

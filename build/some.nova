@@ -1,0 +1,6 @@
+fun double(a : int) -> int {
+    return a * a;
+}
+fun dosome() {
+    
+}

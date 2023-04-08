@@ -1,4 +1,5 @@
 #include "read.h"
+#include "ast.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -9,15 +10,17 @@
 const char *tokstr[] = { "NONE", "EOF",
 	"+", "-",
 	"*", "/",
-	"==" , "!=",
+	"==" , "!=",	
 	"<", ">", "<=", ">=",
-	"intlit", "charlit", "strlit", ";", ":", ",", "=", "ident",
+	 "=",
+	 "++", "--",
+	 "intlit", "charlit", "strlit", ";", ":", ",", "ident", "->",
 	"{", "}", "(", ")",
 	"[", "]",
 	"import", "struct", "var", "fun",
 	"if", "else", "while", "for", "do", "return", "break", "continue",
 	"const", "int", "char", "float",
-	"print"};
+	"print", "foreach", "in", "using"};
 
 extern std::vector<int> tokens_intlit;
 extern std::vector<char> tokens_charlit;
@@ -34,49 +37,27 @@ int main(int argc, char** argv) {
     }
 
     const char* file_path = argv[1];
-    if(!file_exists_p(file_path)) {
-	printf("nova: cannot find %s: no such file or directory\n", file_path);
-	exit(1);
-    }
-
+    
     clock_t start, end;
     long elapsed;
     
     start = clock();
     
-    char* buf;
-    if(!read_file(file_path, &buf)) {
-	printf("nova: connat read %s\n", file_path);
-	exit(1);
-    }
-    int len = strlen(buf);
-
     tokens_intlit_init(0);
     tokens_charlit_init(0);
     tokens_strlit_init(0);
     tokens_ident_init(0);
     
-    std::vector<Token> tokens = lexer_scan(buf, len);
-    for(int i = 0; i < tokens.size(); ++i) {
-	Token token = tokens[i];
-	printf("Token %s", tokstr[token.type]);
-	if(token.type == T_INTLIT)
-	    printf(", value %d", tokens_intlit[token.table_index]);
-	else if(token.type == T_CHARLIT)
-	    printf(", value %c", tokens_charlit[token.table_index]);
-	else if(token.type == T_STRLIT)
-	    printf(", value %s", tokens_strlit[token.table_index]);
-	else if(token.type == T_IDENT)
-	    printf(", name %s", tokens_ident[token.table_index]);
-	printf("\n");
-    }
+    std::vector<AST_Node> ast_nodes = ast(file_path);
 
+    for (int i = 0; i < ast_nodes.size(); ++i) {
+	print_node(&ast_nodes[i]);
+    }
+    
     tokens_intlit_clear();
     tokens_charlit_clear();
     tokens_strlit_clear();
     tokens_ident_clear();
-    
-    free(buf);
     
     end = clock();
 
@@ -109,3 +90,4 @@ bool read_file(const char* path, char** buf) {
 
     return true;
 }
+

@@ -38,6 +38,7 @@ void tokens_intlit_init(int length);
 void tokens_intlit_push(Token* token, int val);
 void tokens_intlit_clear();
 
+
 void tokens_charlit_init(int length);
 void tokens_charlit_push(Token* token, char val);
 void tokens_charlit_clear();

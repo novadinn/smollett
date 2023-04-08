@@ -40,7 +40,7 @@ std::vector<Token> lexer_scan(char* src, int length) {
     token_stream.push_back(token);
 
     lexer_delete(lexer);
-    
+
     return token_stream;
 }
 
@@ -53,10 +53,23 @@ Token lexer_read_token(Lexer* lexer) {
 	token.type = TokenType::T_EOF;
     } break;
     case '+': {
-	token.type = TokenType::T_PLUS;
+	if((c = lexer_next_letter(lexer)) == '+') {
+	    token.type = TokenType::T_INC;
+	} else {
+	    lexer->index--;
+	    token.type = TokenType::T_PLUS;	    
+	}
     } break;
     case '-': {
-	token.type = TokenType::T_MINUS;
+	c = lexer_next_letter(lexer);
+	if(c == '>') {
+	    token.type = TokenType::T_ARROW;
+	} else if (c == '-') {
+	    token.type = TokenType::T_DEC;
+	} else {
+	    lexer->index--;
+	    token.type = TokenType::T_MINUS;
+	}
     } break;
     case '*': {
 	token.type = TokenType::T_STAR;
@@ -165,6 +178,9 @@ Token lexer_read_token(Lexer* lexer) {
     } break;
     };
 
+    token.line = lexer->line;
+    token.index = lexer->index;
+    
     return token;
 }
 
@@ -252,10 +268,10 @@ TokenType lexer_read_keyword(Lexer* lexer, char* s) {
 	    return TokenType::T_INT;
 	if(!strcmp(s, "if"))
 	    return TokenType::T_IF;
-	if(!strcmp(s, "else"))
-	    return TokenType::T_ELSE;
 	if(!strcmp(s, "import"))
 	    return TokenType::T_IMPORT;
+	if(!strcmp(s, "in"))
+	    return TokenType::T_IN;
     } break;
     case 'p': {
 	if(!strcmp(s, "print"))
@@ -272,6 +288,8 @@ TokenType lexer_read_keyword(Lexer* lexer, char* s) {
 	    return TokenType::T_FOR;
 	if(!strcmp(s, "fun"))
 	    return TokenType::T_FUN;
+	if(!strcmp(s, "foreach"))
+	    return TokenType::T_FOREACH;
     } break;
     case 'd': {
 	if(!strcmp(s, "do"))
@@ -300,6 +318,14 @@ TokenType lexer_read_keyword(Lexer* lexer, char* s) {
 	    return TokenType::T_CONST;
 	if(!strcmp(s, "continue"))
 	    return TokenType::T_CONTINUE;
+    } break;
+    case 'e': {
+	if(!strcmp(s, "else"))
+	    return TokenType::T_ELSE;
+    } break;
+    case 'u': {
+	if(!strcmp(s, "using"))
+	    return TokenType::T_USING;
     } break;
     };
 

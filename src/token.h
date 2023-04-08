@@ -11,8 +11,12 @@ enum TokenType {
     T_EQ, T_NE,
     // <  >     <=    >=
     T_LT, T_GT, T_LE, T_GE,
-    //        ;       =
-    T_INTLIT, T_CHARLIT, T_STRLIT, T_SEMI, T_COLON, T_COMMA, T_ASSIGN, T_IDENT,
+    // =
+    T_ASSIGN,
+    // ++ --
+    T_INC, T_DEC,
+    //        ;       ->
+    T_INTLIT, T_CHARLIT, T_STRLIT, T_SEMI, T_COLON, T_COMMA, T_IDENT, T_ARROW,
     // {      }         (         )
     T_LBRACE, T_RBRACE, T_LPAREN, T_RPAREN,
     // [      ]        
@@ -21,12 +25,14 @@ enum TokenType {
     T_IMPORT, T_STRUCT, T_VAR, T_FUN,
     T_IF, T_ELSE, T_WHILE, T_FOR, T_DO, T_RETURN, T_BREAK, T_CONTINUE,
     T_CONST, T_INT, T_CHAR, T_FLOAT,
-    T_PRINT
+    T_PRINT, T_FOREACH, T_IN, T_USING,
 };
 
 struct Token {
     TokenType type;
     int table_index;
+    int line;
+    int index;
 };
 
 #endif // TOKEN_H

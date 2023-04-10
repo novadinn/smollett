@@ -51,14 +51,19 @@ const int opprec[] = {
     1, // =
 };
 
-void print_node(AST_Node* node) {
+void print_node(AST_Node* node) {       
     printf("OperationType: %s\n", nodestr[(int)node->op]);
     printf("Token: %d\n", node->ttable_index);
     printf("AST table index: %d\n", node->atable_index);
     printf("Childs num: %d\n", node->child_num);
+    printf("Childs start: %d\n", node->child_start);
+    
+    for (int j = 0; j < node->child_num; ++j) {
+	print_node(&ast_nodes[node->child_start + j]);
+    }
 }
 
-void ast_build(const char* src) {
+std::vector<AST_Node> ast_build(const char* src) {
     const char* tempsrc = source;
     std::vector<Token>* temptkns = tokens;
     int tempcurt = curt;
@@ -97,7 +102,7 @@ void ast_build(const char* src) {
 
     nextt();
 
-    global_nodes_num += global_statements();
+    std::vector<AST_Node> nodes = global_statements();
     
     free(buf);
     
@@ -105,12 +110,16 @@ void ast_build(const char* src) {
     tokens = temptkns;
     curt = tempcurt;
     token = tempt;
+
+    return nodes;
 }
 
 std::vector<AST_Node> ast(const char* src) {
-    ast_build(src);
+    std::vector<AST_Node> nodes = ast_build(src);
+
+    int start = ast_push(nodes);
     
-    makenode(N_PRGRM, 0, 0);
+    ast_push(makenode(N_PRGRM, 0, nodes.size(), start));
 
     return ast_nodes;
 }
@@ -129,13 +138,14 @@ void prevt() {
     token = &(*tokens)[curt];
 }
 
-void makenode(OperationType t, int tindex, int child_num) {
+AST_Node makenode(OperationType t, int tindex, int child_num, int child_start) {
     AST_Node n;
     n.op = t;
     n.ttable_index = tindex;
     n.child_num = child_num;
-    n.atable_index = ast_nodes.size();
-    ast_nodes.push_back(n);
+    n.child_start = child_start;
+    // ast_nodes.push_back(n);
+    return n;
 }
 
 OperationType arithop(TokenType t) {
@@ -199,7 +209,25 @@ bool opb() {
     return (int)token->type > 1 && (int)token->type < 13;
 }
 
-void match(TokenType t) {
+int ast_push(AST_Node node) {
+    int index = ast_nodes.size();
+    node.atable_index = index;
+    ast_nodes.push_back(node);
+    return index;
+}
+
+int ast_push(std::vector<AST_Node> v) {
+    int start = -1;
+    for (int i = 0; i < v.size(); ++i) {
+	int index = ast_push(v[i]);
+	if (i == 0) {
+	    start = index;
+	}
+    }
+    return start;
+}
+
+void match(TokenType t) {    
     if (token->type != t)
 	fatald("no matches for provided token type", tokstr[(int)t]);
     nextt();
@@ -233,7 +261,8 @@ void fatald(const char* s, const char* c) {
 }
 
 void fatalt(const Token* t, const char* s) {
-    fprintf(stderr, "%s:%d:%d %s\n", source, t->line, t->index, s);
+    fprintf(stderr, "%s:%d:%d %s: %s\n", source, t->line, t->index, s, tokstr[(int)t->type]);
+    exit(-1);
 }
 
 void fatal(const char* s) {
@@ -241,267 +270,242 @@ void fatal(const char* s) {
     exit(-1);
 }
 
-void prefix() {
+AST_Node prefix() {
+    AST_Node node;
     switch(token->type) {
     case T_INC:
 	nextt();
 	ident();
-	makenode(N_PREINC, token->table_index, 0);
+	node = makenode(N_PREINC, token->table_index, 0, -1);
 	nextt();
 	break;
     case T_DEC:
 	nextt();
 	ident();
-	makenode(N_PREDEC, token->table_index, 0);
+	node = makenode(N_PREDEC, token->table_index, 0, -1);
 	nextt();
 	break;
     default: fatalt(token, "token type doesn't match prefix type");
-    }    
+    }
+    return node;
 }
 
-void postfix() {
+AST_Node postfix() {
     int index = token->table_index;
     nextt();
+
+    AST_Node node;
     
     switch(token->type) {
     case T_LPAREN:
-	funccall();
+	node = funccall();
 	break;
     case T_LBRACK:
-	array_access();
+	node = array_access();
 	break;
     case T_INC:
-	makenode(N_POSTINC, index, 0);
+	node = makenode(N_POSTINC, index, 0, -1);
 	nextt();
 	break;
     case T_DEC:
-	makenode(N_POSTDEC, index, 0);
+	node = makenode(N_POSTDEC, index, 0, -1);
 	nextt();
 	break;
-    case T_LBRACE:
-	structlit_declaration();
-	makenode(N_STRUCTINIT, index, 1);
+    case T_LBRACE:	
+	node = makenode(N_STRUCTINIT, index, 1, ast_push(structlit_declaration()));
 	break;
-    default:
-	makenode(N_IDENT, index, 0);
+    default: node = makenode(N_IDENT, index, 0, -1);
     }
+
+    return node;
 }
 
-void literal() {
+AST_Node literal() {
+    AST_Node node;
+
     switch(token->type) {
     case T_INTLIT:
-	makenode(N_INTLIT, token->table_index, 0);
+	node = makenode(N_INTLIT, token->table_index, 0, -1);
 	break;
     case T_CHARLIT:
-	makenode(N_CHARLIT, token->table_index, 0);
+	node = makenode(N_CHARLIT, token->table_index, 0, -1);
 	break;
     case T_STRLIT:
-	makenode(N_STRLIT, token->table_index, 0);
+	node = makenode(N_STRLIT, token->table_index, 0, -1);
 	break;
     case T_LPAREN:
 	nextt();
 
-	binexpr(0);
+	node = binexpr(0);
 
 	rparen();
 	break;
     case T_LBRACE:
-	structlit_declaration();
+	node = structlit_declaration();
 	break;
     case T_IDENT:
-	return postfix();    
+	return postfix();
     default: return prefix();
     }
     
     nextt();
+    
+    return node;
 }
 
-void array_access() {
-    makenode(N_IDENT, token->table_index, 0);
+AST_Node array_access() {
+    std::vector<AST_Node> nodes;
+    
+    nodes.push_back(makenode(N_IDENT, token->table_index, 0, -1));
     lbrack();
 
-    binexpr(0);
+    nodes.push_back(binexpr(0));
 
     rbrack();
 
-    makenode(N_ARAC, 0, 2);
+    int start = ast_push(nodes);
+
+    return makenode(N_ARAC, 0, nodes.size(), start);
 }
 
-void funccall() {
-    makenode(N_IDENT, token->table_index, 0);
+AST_Node funccall() {
+    std::vector<AST_Node> nodes;
+    nodes.push_back(makenode(N_IDENT, token->table_index, 0, -1));
 
     lparen();
 
-    int cn = 1;
     while(1) {
 	if (token->type == T_COMMA) {
 	    nextt();
-	    binexpr(0);
-	    cn++;
+	    nodes.push_back(binexpr(0));
 	} else if (token->type == T_RPAREN) {
 	    nextt();
 	    break;
 	} else {
-	    binexpr(0);
-	    cn++;
+	    nodes.push_back(binexpr(0));
 	}
     }
 
-    makenode(N_FUNCCALL, 0, cn);
+    int start = ast_push(nodes);
+
+    return makenode(N_FUNCCALL, 0, nodes.size(), start);
 }
 
-void binexpr(int pr) {
-    literal();
+AST_Node binexpr(int pr) {
+    AST_Node left = literal();
     
     if (!opb())
-	return;
+	return left;
 
     OperationType op = arithop(token->type);
 
     while((op_precedence(op) > pr)
 	  || (op_precedence(op) == pr) && rightassoc(token->type)) {
+	std::vector<AST_Node> nodes;
+	
 	int p = op_precedence(op);
 	nextt();
 
-	binexpr(p);
-	makenode(op, 0, 2);
+	nodes.push_back(left);
+	nodes.push_back(binexpr(p));
+
+	int start = ast_push(nodes);
+	
+	left = makenode(op, 0, nodes.size(), start);
 	
 	if (!opb())
-	    return;
+	    return left;
 	op = arithop(token->type);
     }
+
+    return left;
 }
 
 
-int global_statements() {
-    int n = 0;
-    while(1) {
+std::vector<AST_Node> global_statements() {
+    std::vector<AST_Node> nodes;
+
+    bool run = true;
+    while(run) {
+	AST_Node node;
 	switch(token->type) {
-	case T_IMPORT:
-	    import_statement();
-	    break;
+	case T_IMPORT: {	   
+	    std::vector<AST_Node> imp_nodes = import_statement();
+	    nodes.insert(nodes.end(), imp_nodes.begin(), imp_nodes.end());	    
+	    continue;
+	}
 	case T_VAR:
-	    var_declaration();
+	    node = var_declaration();
 	    semi();
 	    break;
 	case T_CONST:
-	    const_declaration();
+	    node = const_declaration();
 	    semi();
 	    break;
 	case T_IF:
-	    if_statement();
+	    node = if_statement();
 	    break;
 	case T_FOR:
-	    for_statement();
+	    node = for_statement();
 	    break;
 	case T_DO:
-	    dowhile_statement();
+	    node = dowhile_statement();
 	    break;
 	case T_WHILE:
-	    while_statement();
+	    node = while_statement();
 	    break;
 	case T_FOREACH:
-	    foreach_statement();
+	    node = foreach_statement();
 	    break;	
 	case T_FUN:
-	    fun_declaration();
+	    node = fun_declaration();
 	    break;
 	case T_PRINT:
-	    print_statement();
+	    node = print_statement();
 	    break;
 	case T_STRUCT:
-	    struct_declaration();
+	    node = struct_declaration();
 	    break;
 	case T_EOF:
-	    return n;
+	    run = false;
+	    continue;
 	default:
-	    binexpr(0);
+	    node = binexpr(0);
 	    semi();
 	}
 
-	n++;
+	nodes.push_back(node);
     }
+
+    return nodes;
 }
 
-int block_statements() {
-    int n = 0;
-    while(1) {
-    switch(token->type) {
-    case T_VAR:
-	var_declaration();
-	semi();
-	break;
-    case T_CONST:
-	const_declaration();
-	semi();
-	break;
-    case T_IF:
-	if_statement();
-	break;
-    case T_FOR:
-	for_statement();
-	break;
-    case T_DO:
-	dowhile_statement();
-	break;
-    case T_WHILE:
-	while_statement();
-	break;
-    case T_FOREACH:
-	foreach_statement();
-	break;	
-    case T_FUN:
-	fun_declaration();
-	break;
-    case T_RETURN:
-	return_statement();
-	break;
-    case T_CONTINUE:
-	continue_statement();
-	break;
-    case T_BREAK:
-	break_statement();
-	break;
-    case T_PRINT:
-	print_statement();
-	break;
-    case T_STRUCT:
-	struct_declaration();
-	semi();
-	break;
-    case T_RBRACE:
-	return n;
-    default:
-	binexpr(0);
-	semi();
-    }
-    
-    n++;
-    }
-}
+std::vector<AST_Node> struct_statements() {
+    std::vector<AST_Node> nodes;
 
-int struct_statements() {
-    int n = 0;
-    while(1) {
+    bool run = true;
+    while(run) {
+	AST_Node node;
 	switch(token->type) {
 	case T_IDENT:
-	    struct_member_declaration();
+	    node = struct_member_declaration();
 	    break;
 	case T_FUN:
-	    fun_declaration();
+	    node = fun_declaration();
 	    break;
 	case T_USING:
-	    using_statement();
+	    node = using_statement();
 	    break;
 	case T_RBRACE:
-	    return n;
-	    break;
+	    run = false;
+	    continue;
 	default:
 	    fatalt(token, "token doesn't match struct statement type");
 	}
-	
-	n++;
+	nodes.push_back(node);
     }
+
+    return nodes;
 }
 
 void ident() {
@@ -545,80 +549,90 @@ void rbrace() {
     match(T_RBRACE);
 }
 
-void while_statement() {
+AST_Node while_statement() {
+    std::vector<AST_Node> nodes;
     match(T_WHILE);
 
     lparen();
-    binexpr(0);
+    nodes.push_back(binexpr(0));
     rparen();
     
-    block();
+    nodes.push_back(block());
 
-    makenode(N_WHILE, 0, 2);
+    int start = ast_push(nodes);
+
+    return makenode(N_WHILE, 0, nodes.size(), start);
 }
 
-void dowhile_statement() {
+AST_Node dowhile_statement() {
+    std::vector<AST_Node> nodes;
     match(T_DO);
 
-    block();
+    nodes.push_back(block());
 
     match(T_WHILE);
 
     lparen();
-    binexpr(0);
+    nodes.push_back(binexpr(0));
     rparen();
     
     semi();
 
-    makenode(N_DOWHILE, 0, 2);
+    int start = ast_push(nodes);
+    
+    return makenode(N_DOWHILE, 0, nodes.size(), start);
 }
 
-void for_statement() {
+AST_Node for_statement() {
+    std::vector<AST_Node> nodes;
     match(T_FOR);
-
-    int cn = 4;
 
     lparen();
     if (token->type == T_VAR) {
-	var_declaration();
+	nodes.push_back(var_declaration());
     } else {
-	binexpr(0);
+	nodes.push_back(binexpr(0));
     }
     semi();
-    binexpr(0);
+    nodes.push_back(binexpr(0));
     semi();
-    binexpr(0);
+    nodes.push_back(binexpr(0));
     rparen();
     
     if (token->type == T_IDENT) {
-	makenode(N_IDENT, token->table_index, 0);
+	nodes.push_back(makenode(N_IDENT, token->table_index, 0, -1));
 	nextt();
-	cn++;
     }
 
-    block();
+    nodes.push_back(block());
 
-    makenode(N_FOR, 0, cn);
+    int start = ast_push(nodes);
+    
+    return makenode(N_FOR, 0, nodes.size(), start);
 }
 
-void foreach_statement() {
+AST_Node foreach_statement() {
+    std::vector<AST_Node> nodes;
     match(T_FOREACH);
 
     lparen();
-    var_declaration();
+    nodes.push_back(var_declaration());
 
     match(T_IN);
 
     ident();
-    makenode(N_IDENT, token->table_index, 0);
+    nodes.push_back(makenode(N_IDENT, token->table_index, 0, -1));
     nextt();
     rparen();
     
-    block();
-    makenode(N_FOREACH, 0, 3);
+    nodes.push_back(block());
+
+    int start = ast_push(nodes);
+    
+    return makenode(N_FOREACH, 0, nodes.size(), start);
 }
 
-void import_statement() {
+std::vector<AST_Node> import_statement() {
     match(T_IMPORT);
 
     matchstr();
@@ -627,90 +641,96 @@ void import_statement() {
     
     semi();
 
-    ast_build(tokens_strlit[index]);
+    return ast_build(tokens_strlit[index]);
 }
 
-void if_statement() {
+AST_Node if_statement() {
+    std::vector<AST_Node> nodes;
     match(T_IF);
 
-    int cn = 2;
     lparen();
-    binexpr(0);
+    nodes.push_back(binexpr(0));
     rparen();
     
-    block();
+    nodes.push_back(block());
 
     if (token->type == T_ELSE) {	
 	nextt();	
 
+	int start;
 	if (token->type == T_IF) {
-	    if_statement();	    
+	    start = ast_push(if_statement());	    
 	} else {
-	    block();	    
+	    start = ast_push(block());
 	}
 		
-	makenode(N_ELSE, 0, 1);
-	cn++;
+	nodes.push_back(makenode(N_ELSE, 0, 1, start));	
     }
 
-    makenode(N_IF, 0, cn);
+    int start = ast_push(nodes);
+
+    return makenode(N_IF, 0, nodes.size(), start);
 }
 
-void return_statement() {
+AST_Node return_statement() {
+    std::vector<AST_Node> nodes;
     match(T_RETURN);
 
-    int cn = 0;
-    if (token->type != T_SEMI) {
-       
-	binexpr(0);
-	cn++;
+    if (token->type != T_SEMI) {       
+	nodes.push_back(binexpr(0));
     }
     
     semi();
+
+    int start = ast_push(nodes);
     
-    makenode(N_RETURN, 0, 1);
+    return makenode(N_RETURN, 0, nodes.size(), start);
 }
 
-void continue_statement() {
+AST_Node continue_statement() {
+    std::vector<AST_Node> nodes;
     match(T_CONTINUE);
 
-    int cn = 0;
     if (token->type == T_IDENT) {
-	makenode(N_IDENT, token->table_index, 0);
-	cn++;
+	nodes.push_back(makenode(N_IDENT, token->table_index, 0, -1));
 	nextt();
     }
 
     semi();
-    makenode(N_CONTINUE, 0, cn);
+
+    int start = ast_push(nodes);
+    
+    return makenode(N_CONTINUE, 0, nodes.size(), start);
 }
 
-void break_statement() {
+AST_Node break_statement() {
+    std::vector<AST_Node> nodes;
     match(T_BREAK);
 
-    int cn = 0;
     if (token->type == T_IDENT) {
-	makenode(N_IDENT, token->table_index, 0);
-	cn++;
+	nodes.push_back(makenode(N_IDENT, token->table_index, 0, -1));
 	nextt();
     }
 
     semi();
-    makenode(N_BREAK, 0, cn);
+
+    int start = ast_push(nodes);
+    
+    return makenode(N_BREAK, 0, nodes.size(), start);
 }
 
-void print_statement() {
+AST_Node print_statement() {
+    std::vector<AST_Node> nodes;
     match(T_PRINT);
 
     lparen();
 
-    binexpr(0);
-    int cn = 1;
+    nodes.push_back(binexpr(0));
+    
     while(1) {
 	if (token->type == T_COMMA) {
 	    nextt();
-	    binexpr(0);
-	    cn++;
+	    nodes.push_back(binexpr(0));
 	} else {
 	    break;
 	}
@@ -718,59 +738,62 @@ void print_statement() {
 
     rparen();
     semi();
+
+    int start = ast_push(nodes);
     
-    makenode(N_PRINT, 0, cn);
+    return makenode(N_PRINT, 0, nodes.size(), start);
 }
 
-void using_statement() {
+AST_Node using_statement() {
     match(T_USING);
 
     ident();
-    makenode(N_IDENT, token->table_index, 0);
+    int start = ast_push(makenode(N_IDENT, token->table_index, 0, -1));
     nextt();
     
     semi();
 
-    makenode(N_USING, 0, 1);
+    return makenode(N_USING, 0, 1, start);
 }
 
-void const_declaration() {
+AST_Node const_declaration() {
     match(T_CONST);
 
-    int cn = 1;
-    ident_declaration();
+    std::vector<AST_Node> nodes;
+    
+    nodes.push_back(ident_declaration());
 
     while(1) {
 	if (token->type == T_COMMA) {
 	    nextt();
-	    ident_declaration();
-	    cn++;
+	    nodes.push_back(ident_declaration());	    
 	} else {
 	    break;
 	}
     }
 
-    makenode(N_CONST, 0, cn);
+    int start = ast_push(nodes);
+
+    return makenode(N_CONST, 0, nodes.size(), start);
 }
 
-void fun_declaration() {
+AST_Node fun_declaration() {
     match(T_FUN);
 
+    std::vector<AST_Node> nodes;
+    
     ident();
-    makenode(N_IDENT, token->table_index, 0);
+    nodes.push_back(makenode(N_IDENT, token->table_index, 0, -1));
     nextt();
 
     lparen();
 
-    int cn = 2;
-    while(1) {	
+    while(1) {
 	if (token->type == T_IDENT) {
-	    fun_param_declaration();
-	    cn++;
+	    nodes.push_back(fun_param_declaration());
 	} else if (token->type == T_COMMA) {
 	    nextt();
-	    fun_param_declaration();
-	    cn++;
+	    nodes.push_back(fun_param_declaration());	    
 	} else {
 	    break;
 	}
@@ -780,88 +803,103 @@ void fun_declaration() {
 
     if (token->type == T_ARROW) {
 	nextt();
-	type();
-	cn++;
+	nodes.push_back(type());
     }
     
-    block();
+    nodes.push_back(block());
 
-    makenode(N_FUN, 0, cn);
+    int start = ast_push(nodes);
+    
+    return makenode(N_FUN, 0, nodes.size(), start);
 }
 
-void var_declaration() {
+AST_Node var_declaration() {
     match(T_VAR);
 
-    int cn = 1;
-    ident_declaration();
+    std::vector<AST_Node> nodes;
+    
+    nodes.push_back(ident_declaration());
     while(1) {
 	if (token->type == T_COMMA) {
 	    nextt();
-	    ident_declaration();	    
-	    cn++;
+	    nodes.push_back(ident_declaration());   
 	} else {
 	    break;
 	}
     }
+
+    int start = ast_push(nodes);
     
-    makenode(N_VAR, 0, cn);
+    return makenode(N_VAR, 0, nodes.size(), start);
 }
 
-void struct_member_declaration() {
-    ident_declaration();
+AST_Node struct_member_declaration() {
+    std::vector<AST_Node> nodes;
+
+    nodes.push_back(ident_declaration());
     
-    int cn = 1;
     while(1) {
 	if (token->type == T_COMMA) {
 	    nextt();
-	    ident_declaration();
-	    cn++;
+	    nodes.push_back(ident_declaration());
 	} else if (token->type == T_SEMI) {
 	    nextt();
 	    break;
 	} else {
-	    ident_declaration();
-	    cn++;
+	    nodes.push_back(ident_declaration());
 	}
     }
 
-    makenode(N_STRUCTMEM, 0, cn);
+    int start = ast_push(nodes);
+
+    return makenode(N_STRUCTMEM, 0, nodes.size(), start);
 }
 
-void fun_param_declaration() {
+AST_Node fun_param_declaration() {
     ident();
     int ident_index = token->table_index;
     nextt();
+
+    std::vector<AST_Node> nodes;
     
-    int cn = 0;
     if (colonb()) {
 	nextt();
 	matchtype();
-	type();
-	cn++;
+	nodes.push_back(type());
     }
+
+    int start = ast_push(nodes);
     
-    makenode(N_IDENT, ident_index, cn);
+    return makenode(N_IDENT, ident_index, nodes.size(), start);
 }
 
-void struct_declaration() {
+AST_Node struct_declaration() {
     match(T_STRUCT);
 
+    std::vector<AST_Node> nodes;
+    
     ident();
-    makenode(N_IDENT, token->table_index, 0);
+    nodes.push_back(makenode(N_IDENT, token->table_index, 0, -1));
     nextt();
 
     lbrace();
 
-    int cn = struct_statements();
-    makenode(N_BLOCK, 0, cn);
-    
-    rbrace();
+    std::vector<AST_Node> statements = struct_statements();
+    int start = ast_push(statements);
 
-    makenode(N_STRUCT, 0, 2);
+    rbrace();
+    
+    nodes.push_back(makenode(N_BLOCK, 0, statements.size(), start));
+
+    start = ast_push(nodes);
+
+    return makenode(N_STRUCT, 0, nodes.size(), start);
 }
 
-void ident_declaration() {
+AST_Node ident_declaration() {
+    std::vector<AST_Node> ident_nodes;
+    std::vector<AST_Node> arr_nodes;
+    
     ident();
     int ident_index = token->table_index;
     bool arr = false;
@@ -869,91 +907,174 @@ void ident_declaration() {
 
     if (token->type == T_LBRACK) {
 	nextt();
-	binexpr(0);
+	arr_nodes.push_back(binexpr(0));
 	rbrack();
 	arr = true;
     }
     
-    int cn = 0;
     if (colonb()) {
 	nextt();
 	matchtype();
-	type();
-	cn++;
+	ident_nodes.push_back(type());
     }
+
+    int id_start = ast_push(ident_nodes);
     
-    makenode(N_IDENT, ident_index, cn);
+    AST_Node ident = makenode(N_IDENT, ident_index, ident_nodes.size(), id_start);
     
     if (arr) {
-	makenode(N_ARRAY, 0, 1);
+	arr_nodes.push_back(ident);
 
+	bool init = false;
 	if (token->type == T_LBRACE) {
-	    structlit_declaration();
-	    return;
-	}	
+	    arr_nodes.push_back(structlit_declaration());
+	    init = true;
+	}
+
+	int arr_start = ast_push(arr_nodes);
+	
+	ident = makenode(N_ARRAY, 0, arr_nodes.size(), arr_start);
+	if (init) {
+	    return ident;
+	}
     }
     
     if (token->type == T_ASSIGN) {
+	std::vector<AST_Node> nodes;
+	nodes.push_back(ident);
+	
 	nextt();
-	binexpr(0);
-	makenode(N_ASSIGN, 0, 2);
+	nodes.push_back(binexpr(0));
+
+	int start = ast_push(nodes);
+	
+	ident = makenode(N_ASSIGN, 0, nodes.size(), start);
     }
+
+    return ident;
 }
 
-void structlit_declaration() {
+AST_Node structlit_declaration() {
     lbrace();
 
-    int cn = 0;
+    std::vector<AST_Node> nodes;
+    
     while(1) {
 	if (token->type == T_COMMA) {
 	    nextt();
-	    binexpr(0);
-	    cn++;
+	    nodes.push_back(binexpr(0));
 	} else if (token->type == T_RBRACE) {
 	    nextt();
 	    break;
 	} else {
-	    binexpr(0);
-	    cn++;
+	    nodes.push_back(binexpr(0));
 	}	
     }
 
-    makenode(N_STRUCTLIT, 0, cn);
+    int start = ast_push(nodes);
+
+    return makenode(N_STRUCTLIT, 0, nodes.size(), start);
 }
 
-void block() {
+AST_Node block() {
     lbrace();
 
-    int cn = block_statements();
+    std::vector<AST_Node> nodes;
 
-    rbrace();
-    makenode(N_BLOCK, 0, cn);
+    bool run = true;
+    while(run) {
+	AST_Node node;	
+	switch(token->type) {
+	case T_VAR:
+	    node = var_declaration();
+	    semi();
+	    break;
+	case T_CONST:
+	    node = const_declaration();
+	    semi();
+	    break;
+	case T_IF:
+	    node = if_statement();
+	    break;
+	case T_FOR:
+	    node = for_statement();
+	    break;
+	case T_DO:
+	    node = dowhile_statement();
+	    break;
+	case T_WHILE:
+	    node = while_statement();
+	    break;
+	case T_FOREACH:
+	    node = foreach_statement();
+	    break;	
+	case T_FUN:
+	    node = fun_declaration();
+	    break;
+	case T_RETURN:
+	    node = return_statement();
+	    break;
+	case T_CONTINUE:
+	    node = continue_statement();
+	    break;
+	case T_BREAK:
+	    node = break_statement();
+	    break;
+	case T_PRINT:
+	    node = print_statement();
+	    break;
+	case T_STRUCT:
+	    node = struct_declaration();
+	    break;
+	case T_RBRACE:
+	    nextt();
+	    run = false;
+	    continue;
+	default:
+	    node = binexpr(0);
+	    semi();
+	}
+    
+	nodes.push_back(node);
+    }
+
+    int start = ast_push(nodes);
+
+    return makenode(N_BLOCK, 0, nodes.size(), start);
 }
 
-void type() {
+AST_Node type() {
+    AST_Node node;
     switch(token->type) {
     case T_INT:
-	makenode(N_INT, 0, 0);
+	node = makenode(N_INT, 0, 0, -1);
 	break;
     case T_CHAR:
-	makenode(N_CHAR, 0, 0);
+	node = makenode(N_CHAR, 0, 0, -1);
 	break;
     case T_FLOAT:
-	makenode(N_FLOAT, 0, 0);
+	node = makenode(N_FLOAT, 0, 0, -1);
 	break;
     case T_IDENT:
-	makenode(N_IDENT, token->table_index, 0);
+	node = makenode(N_IDENT, token->table_index, 0, -1);
 	break;
     default: fatalln("token type doesn't match \"type\" type");
     }
     nextt();
     if (token->type == T_LBRACK) {
-	nextt();
-	binexpr(0);
-	rbrack();
+	std::vector<AST_Node> nodes;
+	nodes.push_back(node);
 	
-	makenode(N_ARRAY, 0, 1);
+	nextt();
+	nodes.push_back(binexpr(0));
+	rbrack();
+
+	int start = ast_push(nodes);      
 
 	nextt();
-    }    
+
+	return makenode(N_ARRAY, 0, nodes.size(), start);
+    }
+
+    return node;
 }

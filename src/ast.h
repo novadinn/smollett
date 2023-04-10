@@ -37,20 +37,23 @@ enum OperationType {
 struct AST_Node {
     OperationType op;
     int child_num;
+    int child_start;
     int atable_index;
     int ttable_index;
 };
 
 std::vector<AST_Node> ast(const char* src);
-void ast_build(const char* s);
+std::vector<AST_Node> ast_build(const char* s);
 void print_node(AST_Node* node);
 void nextt();
 void prevt();
-void makenode(OperationType t, int tindex, int child_num);
+AST_Node makenode(OperationType t, int tindex, int child_num, int child_start);
 OperationType arithop(TokenType t);
 int op_precedence(OperationType op);
 bool rightassoc(TokenType t);
 bool opb();
+int ast_push(AST_Node node);
+int ast_push(std::vector<AST_Node> v);
 
 void match(TokenType t);
 bool matchb(TokenType t);
@@ -62,15 +65,14 @@ void fatald(const char* s, const char* c);
 void fatal(const char* s);
 void fatalt(const Token* t, const char* s);
 
-void prefix();
-void postfix();
-void literal();
-void array_access();
-void funccall();
-void binexpr(int pr);
-int global_statements();
-int block_statements();
-int struct_statements();
+AST_Node prefix();
+AST_Node postfix();
+AST_Node literal();
+AST_Node array_access();
+AST_Node funccall();
+AST_Node binexpr(int pr);
+std::vector<AST_Node> global_statements();
+std::vector<AST_Node> struct_statements();
 
 void ident();
 void semi();
@@ -83,28 +85,28 @@ void rparen();
 void lbrace();
 void rbrace();
 
-void while_statement();
-void dowhile_statement();
-void for_statement();
-void foreach_statement();
-void import_statement();
-void if_statement();
-void return_statement();
-void continue_statement();
-void break_statement();
-void print_statement();
-void using_statement();
+std::vector<AST_Node> import_statement();
+AST_Node while_statement();
+AST_Node dowhile_statement();
+AST_Node for_statement();
+AST_Node foreach_statement();
+AST_Node if_statement();
+AST_Node return_statement();
+AST_Node continue_statement();
+AST_Node break_statement();
+AST_Node print_statement();
+AST_Node using_statement();
 
-void const_declaration();
-void fun_declaration();
-void var_declaration();
-void struct_member_declaration();
-void fun_param_declaration();
-void struct_declaration();
-void ident_declaration();
-void structlit_declaration();
+AST_Node const_declaration();
+AST_Node fun_declaration();
+AST_Node var_declaration();
+AST_Node struct_member_declaration();
+AST_Node fun_param_declaration();
+AST_Node struct_declaration();
+AST_Node ident_declaration();
+AST_Node structlit_declaration();
 
-void block();
-void type();
+AST_Node block();
+AST_Node type();
 
 #endif

@@ -50,9 +50,7 @@ int main(int argc, char** argv) {
     
     std::vector<AST_Node> ast_nodes = ast(file_path);
 
-    for (int i = 0; i < ast_nodes.size(); ++i) {
-	print_node(&ast_nodes[i]);
-    }
+    print_node(&ast_nodes[ast_nodes.size() - 1]);	
     
     tokens_intlit_clear();
     tokens_charlit_clear();

@@ -6,7 +6,7 @@ Nova is a simple and efficient statically typed programming language. Currently 
 * Syntax
 ** Imports
 #+BEGIN_SRC
-import "file.nova"
+import "file.nova";
 #+END_SRC
 ** Variable declaration
 #+BEGIN_SRC
@@ -42,8 +42,8 @@ struct Player {
 	fun update() -> void {}
 }
 
-fun game_object_create(GameObject object) {}
-Player player = Player {};
+fun game_object_create(object: GameObject) {}
+var player: Player = Player {};
 game_object_create(player);
 #+END_SRC
 ** Arrays
@@ -53,16 +53,16 @@ var arr2[4] : int {};
 #+END_SRC
 ** Loops
 #+BEGIN_SRC
-for var i = 0; i < 10; ++i {}
-for var i = 0; i < 10; ++i outer { // named loop
-	for var j = 0; j < 10; ++j {
+for (var i = 0; i < 10; ++i) {}
+for (var i = 0; i < 10; ++i) outer { // named loop
+	for (var j = 0; j < 10; ++j) {
 		break outer;
 	}
 }
 
-foreach var v in arr1 {}
-foreach var v, i in arr2 {}
+foreach (var v in arr1) {}
+foreach (var v, i in arr2) {}
 
-while true {}
-do {} while true;
+while (true) {}
+do {} (while) true;
 #+END_SRC

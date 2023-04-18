@@ -89,8 +89,8 @@ Token lexer_read_token(Lexer* lexer) {
 	if((c = lexer_next_letter(lexer)) == '=') {
 	    token.type = TokenType::T_NE;
 	} else {
-	    printf("unrecognised character %d\n", c);
-	    exit(1);
+	    lexer->index--;
+	    token.type = TokenType::T_EXMARK;
 	}
     } break;
     case '<': {
@@ -111,6 +111,9 @@ Token lexer_read_token(Lexer* lexer) {
     } break;
     case ';': {
 	token.type = TokenType::T_SEMI;
+    } break;
+    case '.': {
+	token.type = TokenType::T_DOT;
     } break;
     case ':': {
 	token.type = TokenType::T_COLON;
@@ -302,6 +305,8 @@ TokenType lexer_read_keyword(Lexer* lexer, char* s) {
     case 'v': {
 	if(!strcmp(s, "var"))
 	    return TokenType::T_VAR;
+	if(!strcmp(s, "void"))
+	    return TokenType::T_VOID;
     } break;
     case 'r': {
 	if(!strcmp(s, "return"))

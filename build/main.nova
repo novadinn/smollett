@@ -3,8 +3,8 @@ import "some.nova";
 var a = 0;
 var b : int = 0;
 
-var c, d, e;
-var k: int = 5, n = "123", p;
+var c: float, d: char, e: int;
+var k: int = 5, n = "123", p = 54332;
 
 const a = 12, b = "rfew";
 
@@ -42,9 +42,9 @@ var arr2[4] : int {};
 
 for (var i = 0; i < 10; ++i) {}
 for (var i = 0; i < 10; ++i) outer { 
-	for (var j = 0; j < 10; ++j) {
-		break outer;
-	}
+    for (var j = 0; j < 10; ++j) {
+	break outer;
+    }
 }
 
 foreach (var v in arr1) {}
@@ -55,6 +55,6 @@ do {} while (true);
 
 if (true) {}
 
-if (0 > 1) {
+if (!(0 > 1)) {
 
 } else if (true) {} else {} 

@@ -22,14 +22,14 @@ enum OperationType {
     N_INTLIT, N_STRLIT, N_CHARLIT, N_STRUCTLIT,
     N_ARRAY, N_STRUCTMEM, N_STRUCTINIT,
 
-    N_FUNCCALL, N_ARAC,
+    N_FUNCCALL, N_ARAC, N_MEMBAC, N_NOT,
 
     N_VAR, N_CONST, N_IF, N_ELSE, N_WHILE,
     N_DOWHILE, N_FOR, N_FOREACH, N_FUN, N_RETURN,
     N_CONTINUE, N_BREAK, N_PRINT, N_STRUCT,
     N_USING,
 
-    N_INT, N_CHAR, N_FLOAT,
+    N_INT, N_CHAR, N_FLOAT, N_VOID,
 
     N_PRGRM, N_BLOCK,
 };
@@ -40,7 +40,7 @@ struct AST_Node {
     int child_start;
     int atable_index;
     int ttable_index;
-};
+}; 
 
 std::vector<AST_Node> ast(const char* src);
 std::vector<AST_Node> ast_build(const char* s);
@@ -97,13 +97,13 @@ AST_Node break_statement();
 AST_Node print_statement();
 AST_Node using_statement();
 
-AST_Node const_declaration();
+AST_Node const_declaration(bool need_type = true);
 AST_Node fun_declaration();
-AST_Node var_declaration();
+AST_Node var_declaration(bool need_type = true);
 AST_Node struct_member_declaration();
 AST_Node fun_param_declaration();
 AST_Node struct_declaration();
-AST_Node ident_declaration();
+AST_Node ident_declaration(bool need_type = true);
 AST_Node structlit_declaration();
 
 AST_Node block();

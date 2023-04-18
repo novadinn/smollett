@@ -1,6 +1,11 @@
 fun double(a : int) -> int {
     return a * a;
 }
-fun dosome() {
-    
+fun dosome() -> void {
+       
 }
+
+var a: int;
+var player = Player{};
+var hp = player.hp;
+player.prop.some.p;

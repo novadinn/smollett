@@ -14,12 +14,13 @@ const char *tokstr[] = { "NONE", "EOF",
 	"<", ">", "<=", ">=",
 	 "=",
 	 "++", "--",
-	 "intlit", "charlit", "strlit", ";", ":", ",", "ident", "->",
+	 "intlit", "charlit", "strlit", ";", ":", ",", "ident", "->", ".",
+	 "!",
 	"{", "}", "(", ")",
 	"[", "]",
 	"import", "struct", "var", "fun",
 	"if", "else", "while", "for", "do", "return", "break", "continue",
-	"const", "int", "char", "float",
+	"const", "int", "char", "float", "void",
 	"print", "foreach", "in", "using"};
 
 extern std::vector<int> tokens_intlit;

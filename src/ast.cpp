@@ -54,7 +54,7 @@ void print_node(AST_Node* node) {
     printf("OperationType: %s\n", nodestr[(int)node->op]);
     // printf("Token: %d\n", node->ttable_index);
     // printf("AST table index: %d\n", node->atable_index);
-    // printf("Childs num: %d\n", node->child_num);
+    printf("Childs num: %d\n", node->child_num);
     // printf("Childs start: %d\n", node->child_start);
     
     for (int j = 0; j < node->child_num; ++j) {

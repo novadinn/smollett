@@ -1,5 +1,6 @@
 #include "read.h"
 #include "ast.h"
+#include "eval.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -52,7 +53,10 @@ int main(int argc, char** argv) {
     std::vector<AST_Node> ast_nodes = ast(file_path);
 
     print_node(&ast_nodes[ast_nodes.size() - 1]);	
-    
+
+	int global_env = envs_push(-1);
+	eval(ast_nodes[ast_nodes.size() - 1], global_env);
+	
     tokens_intlit_clear();
     tokens_charlit_clear();
     tokens_strlit_clear();

@@ -14,12 +14,14 @@ const char *nodestr[] = {
     "+", "-",
     ">", "<", ">=", "<=",
     "==", "!=",
+    "&&",
+    "||",
     "=",
     "v++", "v--",
     "++v", "--v",
 
     "ident",
-    "intlit", "strlit", "charlit", "structlit",
+    "intlit", "floatlit", "strlit", "charlit", "structlit",
     "array", "struct member", "struct initialisation",
     
     "funccall", "array access", "member access", "!",
@@ -43,19 +45,18 @@ std::vector<Token>* tokens;
 const char* source;
 
 const int opprec[] = {
-    5, 5, // * /
-    4, 4, // + -
-    3, 3, 3, 3, // > < >= <=
-    2, 2, // == !==
+    7, 7, // * /
+    6, 6, // + -
+    5, 5, 5, 5, // > < >= <=
+    4, 4, // == !==
+    3, // &&
+    2, // ||
     1, // =
 };
 
 void print_node(AST_Node* node) {       
-    printf("OperationType: %s\n", nodestr[(int)node->op]);
-    // printf("Token: %d\n", node->ttable_index);
-    // printf("AST table index: %d\n", node->atable_index);
+    printf("OperationType: %s\n", nodestr[(int)node->op]);    
     printf("Childs num: %d\n", node->child_num);
-    // printf("Childs start: %d\n", node->child_start);
     
     for (int j = 0; j < node->child_num; ++j) {
 	print_node(&ast_nodes[node->child_start + j]);
@@ -143,7 +144,6 @@ AST_Node makenode(OperationType t, int tindex, int child_num, int child_start) {
     n.ttable_index = tindex;
     n.child_num = child_num;
     n.child_start = child_start;
-    // ast_nodes.push_back(n);
     return n;
 }
 
@@ -183,7 +183,12 @@ OperationType arithop(TokenType t) {
     case T_ASSIGN:
 	o = N_ASSIGN;
 	break;
-    
+    case T_AND:
+	o = N_AND;
+	break;
+    case T_OR:
+	o = N_OR;
+	break;    
     default: fatald("unknown token type", tokstr[(int)t]);
     }
     return o;
@@ -205,7 +210,7 @@ bool rightassoc(TokenType t) {
 }
 
 bool opb() {
-    return (int)token->type > 1 && (int)token->type < 13;
+    return (int)token->type > 1 && (int)token->type < 15;
 }
 
 int ast_push(AST_Node node) {
@@ -226,8 +231,7 @@ int ast_push(std::vector<AST_Node> v) {
     return start;
 }
 
-void match(TokenType t) {
-    printf("%s\n", tokstr[(int)token->type]);
+void match(TokenType t) {  
     if (token->type != t)
 	fatald("no matches for provided token type", tokstr[(int)t]);
     nextt();
@@ -331,11 +335,14 @@ AST_Node postfix() {
 
 AST_Node literal() {
     AST_Node node;
-
+    
     switch(token->type) {
     case T_INTLIT:
 	node = makenode(N_INTLIT, token->table_index, 0, -1);
 	break;
+    case T_FLOATLIT:
+	node = makenode(N_FLOATLIT, token->table_index, 0, -1);
+	break;	
     case T_CHARLIT:
 	node = makenode(N_CHARLIT, token->table_index, 0, -1);
 	break;
@@ -351,7 +358,10 @@ AST_Node literal() {
 	return node;
     case T_LBRACE:
 	node = structlit_declaration();
-	break;
+	return node;
+    case T_PRINT:
+	node = print_statement();
+	return node;
     case T_IDENT:
 	return postfix();
     default: return prefix();
@@ -445,6 +455,7 @@ std::vector<AST_Node> global_statements() {
 	}
 	case T_VAR:
 	    node = var_declaration();
+	    printf("here %s\n", tokstr[(int)token->type]);
 	    semi();
 	    break;
 	case T_CONST:
@@ -471,6 +482,7 @@ std::vector<AST_Node> global_statements() {
 	    break;
 	case T_PRINT:
 	    node = print_statement();
+	    semi();
 	    break;
 	case T_STRUCT:
 	    node = struct_declaration();
@@ -746,8 +758,7 @@ AST_Node print_statement() {
     }
 
     rparen();
-    semi();
-
+   
     int start = ast_push(nodes);
     
     return makenode(N_PRINT, 0, nodes.size(), start);
@@ -1040,6 +1051,7 @@ AST_Node block() {
 	    break;
 	case T_PRINT:
 	    node = print_statement();
+	    semi();
 	    break;
 	case T_STRUCT:
 	    node = struct_declaration();

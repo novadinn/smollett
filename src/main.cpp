@@ -13,10 +13,12 @@ const char *tokstr[] = { "NONE", "EOF",
 	"*", "/",
 	"==" , "!=",	
 	"<", ">", "<=", ">=",
-	 "=",
-	 "++", "--",
-	 "intlit", "charlit", "strlit", ";", ":", ",", "ident", "->", ".",
-	 "!",
+	"&&",
+	"||",
+	"=",
+	"++", "--",
+	"intlit", "floatlit", "charlit", "strlit", ";", ":", ",", "ident", "->", ".",
+	"!",
 	"{", "}", "(", ")",
 	"[", "]",
 	"import", "struct", "var", "fun",
@@ -25,6 +27,7 @@ const char *tokstr[] = { "NONE", "EOF",
 	"print", "foreach", "in", "using"};
 
 extern std::vector<int> tokens_intlit;
+extern std::vector<float> tokens_floatlit;
 extern std::vector<char> tokens_charlit;
 extern std::vector<char*> tokens_strlit;
 extern std::vector<char*> tokens_ident;
@@ -46,6 +49,7 @@ int main(int argc, char** argv) {
     start = clock();
     
     tokens_intlit_init(0);
+    tokens_floatlit_init(0);
     tokens_charlit_init(0);
     tokens_strlit_init(0);
     tokens_ident_init(0);
@@ -54,10 +58,11 @@ int main(int argc, char** argv) {
 
     print_node(&ast_nodes[ast_nodes.size() - 1]);	
 
-	int global_env = envs_push(-1);
-	eval(ast_nodes[ast_nodes.size() - 1], global_env);
-	
+    int global_env = envs_push(-1);
+    eval(ast_nodes[ast_nodes.size() - 1], global_env);
+
     tokens_intlit_clear();
+    tokens_floatlit_clear();
     tokens_charlit_clear();
     tokens_strlit_clear();
     tokens_ident_clear();

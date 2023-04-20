@@ -20,8 +20,11 @@ NovaValue eval_plus(AST_Node node, int env_index);
 NovaValue eval_minus(AST_Node node, int env_index);
 NovaValue eval_mult(AST_Node node, int env_index);
 NovaValue eval_div(AST_Node node, int env_index);
+
 NovaValue eval_if(AST_Node node, int env_index);
 NovaValue eval_else(AST_Node node, int env_index);
+NovaValue eval_for(AST_Node node, int env_index);
+NovaValue eval_while(AST_Node node, int env_index);
 
 NovaValue eval_greater_than(AST_Node node, int env_index);
 NovaValue eval_less_than(AST_Node node, int env_index);
@@ -29,6 +32,7 @@ NovaValue eval_greater_than_or_equal(AST_Node node, int env_index);
 NovaValue eval_less_than_or_equal(AST_Node node, int env_index);
 NovaValue eval_equals(AST_Node node, int env_index);
 NovaValue eval_not_equals(AST_Node node, int env_index);
+NovaValue eval_not(AST_Node node, int env_index);
 
 NovaValueType eval_ottonvt(OperationType type);
 double eval_retrieve_number(NovaValue nv);

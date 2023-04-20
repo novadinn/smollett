@@ -12,6 +12,7 @@ void eval(AST_Node program, int env_index) {
 	eval_rec(program, env_index);
 }
 
+// TODO: we are not clearing the envs and nova_* vectors
 NovaValue eval_rec(AST_Node node, int env_index) {
 	switch(node.op) {
 	case OperationType::N_PRGRM: {
@@ -59,6 +60,12 @@ NovaValue eval_rec(AST_Node node, int env_index) {
 	case OperationType::N_ELSE: {
 		return eval_else(node, env_index);
 	} break;
+	case OperationType::N_FOR: {
+		return eval_for(node, env_index);
+	} break;
+	case OperationType::N_WHILE: {
+		return eval_while(node, env_index);
+	} break;
 	case OperationType::N_GT: {
 		return eval_greater_than(node, env_index);
 	};
@@ -77,6 +84,12 @@ NovaValue eval_rec(AST_Node node, int env_index) {
 	case OperationType::N_NE: {
 		return eval_not_equals(node, env_index);
 	};
+	case OperationType::N_NOT: {
+		return eval_not(node, env_index);
+	} break;
+	case OperationType::N_PRINT: {
+		return eval_print(node, env_index);
+	} break;
 	};
 
 	return NovaValue{E_UNKNOWN};
@@ -91,12 +104,50 @@ NovaValue eval_program(AST_Node node, int env_index) {
 	return NovaValue{E_UNKNOWN};
 }
 
+const char *nodestr2[] = {
+    "*", "/",
+    "+", "-",
+    ">", "<", ">=", "<=",
+    "==", "!=",
+    "=",
+    "v++", "v--",
+    "++v", "--v",
+
+    "ident",
+    "intlit", "strlit", "charlit", "structlit",
+    "array", "struct member", "struct initialisation",
+    
+    "funccall", "array access", "member access", "!",
+
+    "var", "const", "if", "else", "while",
+    "do while", "for", "foreach", "fun", "return",
+    "continue", "break", "print", "struct",
+    "using",
+    
+    "int", "char", "float", "void",
+
+    "pgr", "block",
+};
+
 NovaValue eval_block(AST_Node node, int env_index) {
 	// Store the last evaluated element, and return it after
 	NovaValue fin;
 	// Evaluate every element
 	for(int i = node.child_start; i < node.child_start + node.child_num; ++i) {
-		fin = eval_rec(ast_nodes[i], env_index);
+		AST_Node element = ast_nodes[i];
+		fin = eval_rec(element, env_index);
+		
+		// TODO: check for all cases where subblocks can contains a return statement (if/for/while...)
+		switch(element.op) {
+		case N_RETURN: {
+			return fin;
+		} break;
+		case N_IF: {
+			if(fin.type != NovaValueType::E_UNKNOWN) {
+				return fin;
+			}
+		} break;
+		};
 	}
 
 	return fin;
@@ -126,8 +177,8 @@ NovaValue eval_function(AST_Node node, int env_index) {
 
 		data.types.push_back(type);
 	}
-	AST_Node return_value = ast_nodes[node.child_start-2];
-	AST_Node block = ast_nodes[node.child_start-1];
+	AST_Node return_value = ast_nodes[node.child_start+node.child_num-2];
+	AST_Node block = ast_nodes[node.child_start+node.child_num-1];
 
 	data.return_value = eval_ottonvt(return_value.op);
 	data.block = block;
@@ -180,7 +231,7 @@ NovaValue eval_function_call(AST_Node node, int env_index) {
 
 		env_set_unbound(function_env_index, env_types_index, eval_arg);
 	}
-
+	
 	NovaValue eval_result = eval_rec(block, function_env_index);
 	if(eval_result.type != return_value_type) {
 		// TODO: check if got type can be converted to the expected type. If not, log error
@@ -219,8 +270,6 @@ NovaValue eval_var(AST_Node node, int env_index) {
 		fin = result;
 	}
 
-	printf("Created var with value: %d\n", nova_integers[fin.index]);
-	
 	return fin;
 }
 
@@ -367,6 +416,41 @@ NovaValue eval_else(AST_Node node, int env_index) {
 	return NovaValue{NovaValueType::E_UNKNOWN};
 }
 
+// TODO: not working
+NovaValue eval_for(AST_Node node, int env_index) {
+	// Variable declaration
+	AST_Node declare = ast_nodes[node.child_start];
+	// Loop termination condition
+	AST_Node cond = ast_nodes[node.child_start+1];
+	AST_Node post = ast_nodes[node.child_start+2];
+	AST_Node block = ast_nodes[node.child_start+3];
+
+	int local_env_index = envs_push(env_index);
+
+	// Eval the declaration
+	eval_rec(declare, local_env_index);
+	for(;;) {
+		NovaValue cond_nv = eval_rec(cond, local_env_index);
+
+		char val = nova_chars[cond_nv.index];
+
+		// Condition is not accomplished
+		if(val == 0) {
+			break;
+		}
+
+		// Evaluated the loop body
+		eval_rec(block, local_env_index);
+		eval_rec(post, local_env_index);
+	}
+
+	return NovaValue{NovaValueType::E_UNKNOWN};
+}
+
+NovaValue eval_while(AST_Node node, int env_index) {
+	return NovaValue{NovaValueType::E_UNKNOWN};
+}
+
 NovaValue eval_greater_than(AST_Node node, int env_index) {
 	AST_Node lhs = ast_nodes[node.child_start];
 	AST_Node rhs = ast_nodes[node.child_start+1];
@@ -459,6 +543,24 @@ NovaValue eval_not_equals(AST_Node node, int env_index) {
 
 	NovaValue result = NovaValue{NovaValueType::E_CHARLIT};
 	result.index = nova_chars_push(left_val != right_val);
+
+	return result;
+}
+
+NovaValue eval_not(AST_Node node, int env_index) {
+	AST_Node exp = ast_nodes[node.child_start];
+
+	NovaValue nv = eval_rec(exp, env_index);
+
+	char val = nova_chars[nv.index];
+
+	NovaValue result = NovaValue{NovaValueType::E_CHARLIT};
+	// Invert the result
+	if(val == 0) {
+		result.index = nova_chars_push(1);
+	} else {
+		result.index = nova_chars_push(0);
+	}
 
 	return result;
 }

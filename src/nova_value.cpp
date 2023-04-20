@@ -2,6 +2,7 @@
 
 std::vector<NovaFunData> nova_funs;
 std::vector<int> nova_integers;
+std::vector<float> nova_floats;
 std::vector<char> nova_chars;
 
 void nova_funs_init(int length) {
@@ -30,6 +31,20 @@ int nova_integers_push(int value) {
 
 void nova_integers_clear() {
 	nova_integers.clear();
+}
+
+void nova_floats_init(int length) {
+	nova_floats.reserve(length);
+}
+
+int nova_floats_push(float value) {
+	nova_floats.push_back(value);
+
+	return nova_floats.size()-1;
+}
+
+void nova_floats_clear() {
+	nova_floats.clear();
 }
 
 void nova_chars_init(int length) {

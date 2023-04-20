@@ -25,6 +25,7 @@ struct NovaFunData {
 
 extern std::vector<NovaFunData> nova_funs;
 extern std::vector<int> nova_integers;
+extern std::vector<float> nova_floats;
 extern std::vector<char> nova_chars;
 
 void nova_funs_init(int length);
@@ -34,6 +35,10 @@ void nova_funs_clear();
 void nova_integers_init(int length);
 int nova_integers_push(int value);
 void nova_integers_clear();
+
+void nova_floats_init(int length);
+int nova_floats_push(float value);
+void nova_floats_clear();
 
 void nova_chars_init(int length);
 int nova_chars_push(char value);

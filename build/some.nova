@@ -10,18 +10,10 @@ fun factorial(n : int) -> int {
 	return n * factorial(n - 1);
 }
 
-fun odd(n : int) -> int {
-     if(n == 1) {
-     	  return 1;
-     }
-     else {
-      return odd(n - 1);
-     }
-
-     
-}
-
 var a = 15;
 var b = a + square(a);
 var c = factorial(5);
-var d = odd(5);
+
+print(a);
+print(b);
+print(c);

@@ -25,5 +25,6 @@ NovaValue envs_search(char* sym, int index);
 void env_push_value(int env_index, char* sym, NovaValue value);
 void env_push_unbound(int env_index, char* sym, NovaValueType type);
 void env_set_unbound(int env_index, int value_index, NovaValue value);
+void env_set_by_name(int env_index, char* sym, NovaValue value);
 
 #endif // ENV_H

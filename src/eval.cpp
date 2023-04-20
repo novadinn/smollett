@@ -1,6 +1,7 @@
 #include "eval.h"
 
 extern std::vector<int> tokens_intlit;
+extern std::vector<float> tokens_floatlit;
 extern std::vector<char> tokens_charlit;
 extern std::vector<char*> tokens_strlit;
 extern std::vector<char*> tokens_ident;
@@ -39,6 +40,9 @@ NovaValue eval_rec(AST_Node node, int env_index) {
 	case OperationType::N_INTLIT: {
 		return eval_intlit(node, env_index);
 	};
+	case OperationType::N_FLOATLIT: {
+		return eval_floatlit(node, env_index);
+	} break;
 	case OperationType::N_CHARLIT: {
 		return eval_charlit(node, env_index);
 	};
@@ -59,6 +63,9 @@ NovaValue eval_rec(AST_Node node, int env_index) {
 	} break;
 	case OperationType::N_ELSE: {
 		return eval_else(node, env_index);
+	} break;
+	case OperationType::N_ASSIGN: {
+		return eval_assign(node, env_index);
 	} break;
 	case OperationType::N_FOR: {
 		return eval_for(node, env_index);
@@ -84,8 +91,20 @@ NovaValue eval_rec(AST_Node node, int env_index) {
 	case OperationType::N_NE: {
 		return eval_not_equals(node, env_index);
 	};
+	case OperationType::N_AND: {
+		return eval_and(node, env_index);
+	} break;
+	case OperationType::N_OR: {
+		return eval_or(node, env_index);
+	} break;
 	case OperationType::N_NOT: {
 		return eval_not(node, env_index);
+	} break;
+	case OperationType::N_POSTINC: {
+		return eval_post_increment(node, env_index);
+	} break;
+	case OperationType::N_POSTDEC: {
+		return eval_post_decrement(node, env_index);
 	} break;
 	case OperationType::N_PRINT: {
 		return eval_print(node, env_index);
@@ -260,6 +279,7 @@ NovaValue eval_var(AST_Node node, int env_index) {
 
 		char* var_name = tokens_ident[lhs.ttable_index];
 		NovaValue result = eval_rec(rhs, env_index);
+		// Type is specified
 		if(lhs.child_num == 1) {
 			AST_Node type_node = ast_nodes[lhs.child_start];
 			// TODO: check if type is correct. If not, log error
@@ -290,6 +310,15 @@ NovaValue eval_intlit(AST_Node node, int env_index) {
 	// Get the value from the tokens table
 	int value = tokens_intlit[node.ttable_index];
 	result.index = nova_integers_push(value);
+
+	return result;
+}
+
+NovaValue eval_floatlit(AST_Node node, int env_index) {
+	NovaValue result = NovaValue{NovaValueType::E_FLOATLIT};
+	// Get the value from the tokens table
+	float value = tokens_floatlit[node.ttable_index];
+	result.index = nova_floats_push(value);
 
 	return result;
 }
@@ -416,7 +445,21 @@ NovaValue eval_else(AST_Node node, int env_index) {
 	return NovaValue{NovaValueType::E_UNKNOWN};
 }
 
-// TODO: not working
+NovaValue eval_assign(AST_Node node, int env_index) {
+	AST_Node left = ast_nodes[node.child_start];
+	AST_Node right = ast_nodes[node.child_start+1];
+
+	char* name = tokens_ident[left.ttable_index];
+
+	NovaValue nv = envs_search(name, env_index);
+
+	NovaValue result = eval_rec(right, env_index);
+	
+	env_set_by_name(env_index, name, result);
+
+	return result;
+}
+
 NovaValue eval_for(AST_Node node, int env_index) {
 	// Variable declaration
 	AST_Node declare = ast_nodes[node.child_start];
@@ -439,6 +482,7 @@ NovaValue eval_for(AST_Node node, int env_index) {
 			break;
 		}
 
+		// TODO: check for a return statement
 		// Evaluated the loop body
 		eval_rec(block, local_env_index);
 		eval_rec(post, local_env_index);
@@ -448,6 +492,25 @@ NovaValue eval_for(AST_Node node, int env_index) {
 }
 
 NovaValue eval_while(AST_Node node, int env_index) {
+	AST_Node cond = ast_nodes[node.child_start];
+	AST_Node block = ast_nodes[node.child_start+1];
+
+	int local_env_index = envs_push(env_index);
+
+	for(;;) {
+		NovaValue cond_nv = eval_rec(cond, local_env_index);
+
+		char val = nova_chars[cond_nv.index];
+
+		// Condition accomplished
+		if(val != 0) {
+			break;
+		}
+
+		// TODO: check for a return statement
+		eval_rec(block, local_env_index);
+	}
+	
 	return NovaValue{NovaValueType::E_UNKNOWN};
 }
 
@@ -565,6 +628,74 @@ NovaValue eval_not(AST_Node node, int env_index) {
 	return result;
 }
 
+NovaValue eval_and(AST_Node node, int env_index) {
+	AST_Node left = ast_nodes[node.child_start];
+	AST_Node right = ast_nodes[node.child_start+1];
+
+	printf("%s\n", nodestr2[left.op]);
+	printf("%s\n", nodestr2[right.op]);
+}
+
+NovaValue eval_or(AST_Node node, int env_index) {
+
+}
+
+NovaValue eval_post_increment(AST_Node node, int env_index) {
+	char* name = tokens_ident[node.ttable_index];
+	
+	// Search in the current env
+	NovaValue nv = envs_search(name, env_index);
+
+	NovaValue result = NovaValue{nv.type};
+	double val = eval_retrieve_number(nv);
+
+	// Update the value
+	result.index = eval_push_number_from_type(nv.type, val+1);
+	
+	// Set the value
+	env_set_by_name(env_index, name, result);
+
+	return result;
+}
+
+NovaValue eval_post_decrement(AST_Node node, int env_index) {
+	char* name = tokens_ident[node.ttable_index];
+	
+	// Search in the current env
+	NovaValue nv = envs_search(name, env_index);
+
+	NovaValue result = NovaValue{nv.type};
+	double val = eval_retrieve_number(nv);
+
+	// Update the value
+	result.index = eval_push_number_from_type(nv.type, val-1);
+	
+	// Set the value
+	env_set_by_name(env_index, name, result);
+
+	return result;
+}
+
+NovaValue eval_print(AST_Node node, int env_index) {
+	AST_Node child = ast_nodes[node.child_start];
+	
+	NovaValue nv = eval_rec(child, env_index);
+
+	switch(nv.type) {
+	case NovaValueType::E_INTLIT: {
+		printf("%d\n", nova_integers[nv.index]);
+	} break;
+	case NovaValueType::E_FLOATLIT: {
+		printf("%f\n", nova_floats[nv.index]);
+	} break;
+	case NovaValueType::E_CHARLIT: {
+		printf("%c\n", nova_chars[nv.index]);
+	};
+	};
+	
+	return NovaValue{NovaValueType::E_UNKNOWN};
+}
+
 NovaValueType eval_ottonvt(OperationType type) {
 	switch(type) {
 	case OperationType::N_INT: {
@@ -587,6 +718,9 @@ double eval_retrieve_number(NovaValue nv) {
 	case NovaValueType::E_INTLIT: {
 		val = nova_integers[nv.index];
 	} break;
+	case NovaValueType::E_FLOATLIT: {
+		val = nova_floats[nv.index];
+	} break;
 	case NovaValueType::E_CHARLIT: {
 		val = nova_chars[nv.index];
 	} break;
@@ -599,6 +733,9 @@ int eval_push_number_from_type(NovaValueType type, double value) {
 	switch(type) {
 	case NovaValueType::E_INTLIT: {
 		return nova_integers_push(value);
+	} break;
+	case NovaValueType::E_FLOATLIT: {
+		return nova_floats_push(value);
 	} break;
 	case NovaValueType::E_CHARLIT: {
 		return nova_chars_push(value);

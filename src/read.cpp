@@ -251,20 +251,6 @@ double lexer_read_number(Lexer* lexer, char c, bool* has_decimal) {
     return fval;
 }
 
-int lexer_read_int(Lexer* lexer, char c) {
-    int k, val = 0;
-
-    while ((k = char_pos("0123456789", c)) >= 0) {
-	val = val * 10 + k;
-	c = lexer_next_letter(lexer);
-    }
-
-    // NOTE: we need to put it back since we have already readed next character, so
-    // next_letter cannot read it again, we need to force if to do so
-    lexer->index--;
-    return val;
-}
-
 char lexer_read_char(Lexer* lexer) {
     char c;
     

@@ -25,3 +25,4 @@ var a = 15;
 var b = a + square(a);
 var c = factorial(5);
 var d = odd(5);
+if (10 < 15 && 15 < 10 && 1 < 1) {}

@@ -10,6 +10,7 @@
 #define MAX_TEXT_LENGTH 2048
 
 std::vector<int> tokens_intlit;
+std::vector<float> tokens_floatlit;
 std::vector<char> tokens_charlit;
 std::vector<char*> tokens_strlit;
 std::vector<char*> tokens_ident;
@@ -109,6 +110,22 @@ Token lexer_read_token(Lexer* lexer) {
 	    token.type = TokenType::T_GT;
 	}
     } break;
+    case '&': {
+	if ((c = lexer_next_letter(lexer)) == '&') {
+	    token.type = TokenType::T_AND;
+	} else {
+	    printf("invalid token\n");
+	    exit(1);
+	}	
+    } break;
+    case '|': {
+	if ((c = lexer_next_letter(lexer)) == '|') {
+	    token.type = TokenType::T_OR;
+	} else {
+	    printf("invalid token\n");
+	    exit(1);
+	}	
+    } break;
     case ';': {
 	token.type = TokenType::T_SEMI;
     } break;
@@ -154,8 +171,15 @@ Token lexer_read_token(Lexer* lexer) {
     } break;
     default: {
 	if(isdigit(c)) {
-	    token.type = TokenType::T_INTLIT;
-	    tokens_intlit_push(&token, lexer_read_int(lexer, c));
+	    bool has_decimal;
+	    double val = lexer_read_number(lexer, c, &has_decimal);
+	    if(has_decimal) {
+		token.type = TokenType::T_FLOATLIT;
+		tokens_floatlit_push(&token, val);
+	    } else {
+		token.type = TokenType::T_INTLIT;
+		tokens_intlit_push(&token, (int)val);
+	    }	    
 	} else if(isalpha(c) || c == '_') {
 	    char buf[IDENTIFIER_MAX_LENGTH];
 	    TokenType type;
@@ -185,6 +209,46 @@ Token lexer_read_token(Lexer* lexer) {
     token.index = lexer->index;
     
     return token;
+}
+
+double lexer_read_number(Lexer* lexer, char c, bool* has_decimal) {
+    int k, val = 0;
+    float fval = 0;
+    int num_digits = 0;
+    int decimal_pos = -1;
+
+    *has_decimal = false;
+
+    while((k = char_pos("0123456789.", c)) >= 0) {
+	if(c == '.') {
+	    *has_decimal = true;
+	    if(decimal_pos >= 0) {
+		printf("nova: invalid float value\n");
+		exit(1);
+	    }
+
+	    decimal_pos = num_digits;
+	} else {
+	    val = val * 10 + k;
+	    num_digits++;
+	}
+	
+	c = lexer_next_letter(lexer);
+    }
+
+    if(decimal_pos >= 0) {
+	int divisor = 1;
+	for(int i = 0; i < (num_digits - decimal_pos); i++) {
+	    divisor *= 10;
+	}
+
+	fval = (float)val / (float)divisor;
+    } else {
+	fval = (float)val;
+    }
+
+    lexer->index--;
+    return fval;
 }
 
 int lexer_read_int(Lexer* lexer, char c) {
@@ -378,6 +442,17 @@ void tokens_intlit_push(Token* token, int val) {
 }
 void tokens_intlit_clear() {
     tokens_intlit.clear();
+}
+
+void tokens_floatlit_init(int length) {
+    tokens_floatlit.reserve(length);
+}
+void tokens_floatlit_push(Token* token, float val) {
+    tokens_floatlit.push_back(val);
+    token->table_index = tokens_floatlit.size()-1;
+}
+void tokens_floatlit_clear() {
+    tokens_floatlit.clear();
 }
 
 void tokens_charlit_init(int length) {

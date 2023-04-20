@@ -11,12 +11,16 @@ enum TokenType {
     T_EQ, T_NE,
     // <  >     <=    >=
     T_LT, T_GT, T_LE, T_GE,
+    // &&
+    T_AND,
+    // ||
+    T_OR,
     // =
     T_ASSIGN,
     // ++ --
     T_INC, T_DEC,
     //        ;       ->  .   
-    T_INTLIT, T_CHARLIT, T_STRLIT, T_SEMI, T_COLON, T_COMMA, T_IDENT, T_ARROW, T_DOT,
+    T_INTLIT, T_FLOATLIT, T_CHARLIT, T_STRLIT, T_SEMI, T_COLON, T_COMMA, T_IDENT, T_ARROW, T_DOT,
     // !
     T_EXMARK,
     // {      }         (         )

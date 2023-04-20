@@ -3,12 +3,11 @@ fun square(a : int) -> int {
 }
 
 fun factorial(n : int) -> int {
-	if(n > 1) {
-    	 return n * factorial(n - 1);
+	if(!(n > 1)) {
+		return 1;
 	}
-  	else {
-    	 return 1;
-	}
+	
+	return n * factorial(n - 1);
 }
 
 fun odd(n : int) -> int {

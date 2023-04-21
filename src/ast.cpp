@@ -444,8 +444,7 @@ std::vector<AST_Node> global_statements() {
 	    continue;
 	}
 	case T_VAR:
-	    node = var_declaration();
-	    printf("here %s\n", tokstr[(int)token->type]);
+	    node = var_declaration();	    
 	    semi();
 	    break;
 	case T_CONST:

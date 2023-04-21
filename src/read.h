@@ -27,6 +27,7 @@ TokenType lexer_read_keyword(Lexer* lexer, char* s);
 
 char lexer_next_letter(Lexer* lexer);
 char lexer_next_letter_skip(Lexer* lexer);
+void lexer_skip_line(Lexer* lexer);
 
 char char_pos(char* s, char c);
 

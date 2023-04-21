@@ -76,7 +76,29 @@ Token lexer_read_token(Lexer* lexer) {
 	token.type = TokenType::T_STAR;
     } break;
     case '/': {
-	token.type = TokenType::T_SLASH;
+	c = lexer_next_letter(lexer);
+	if (c == '/') {
+	    lexer_skip_line(lexer);
+	    return lexer_read_token(lexer);
+	} else if (c == '*') {
+	    while(1) {
+		c = lexer_next_letter(lexer);
+		if (c == EOF) {
+		    printf("unexpected end of file\n");
+		    exit(1);
+		}
+		if(c == '*') {
+		    if ((c = lexer_next_letter(lexer)) == '/') {
+			return lexer_read_token(lexer);
+		    } else {
+			lexer->index--;
+		    }
+		} 
+	    }
+	} else {
+	    lexer->index--;
+	    token.type = TokenType::T_SLASH;
+	}	
     } break;
     case '=': {
 	if((c = lexer_next_letter(lexer)) == '=') {
@@ -406,6 +428,13 @@ char lexer_next_letter_skip(Lexer* lexer) {
 	c = lexer_next_letter(lexer);
 
     return c;
+}
+
+void lexer_skip_line(Lexer* lexer) {
+    int line = lexer->line;
+
+    while(line == lexer->line)
+	lexer_next_letter(lexer);
 }
 
 char char_pos(char* s, char c) {

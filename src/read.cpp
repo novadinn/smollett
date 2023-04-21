@@ -343,11 +343,7 @@ TokenType lexer_read_keyword(Lexer* lexer, char* s) {
 	    return TokenType::T_FUN;
 	if(!strcmp(s, "foreach"))
 	    return TokenType::T_FOREACH;
-    } break;
-    case 'd': {
-	if(!strcmp(s, "do"))
-	    return TokenType::T_DO;
-    } break;
+    } break;    
     case 's': {
 	if(!strcmp(s, "struct"))
 	    return TokenType::T_STRUCT;

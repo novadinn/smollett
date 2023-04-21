@@ -128,12 +128,14 @@ const char *nodestr2[] = {
     "+", "-",
     ">", "<", ">=", "<=",
     "==", "!=",
+    "&&",
+    "||",
     "=",
     "v++", "v--",
     "++v", "--v",
 
     "ident",
-    "intlit", "strlit", "charlit", "structlit",
+    "intlit", "floatlit", "strlit", "charlit", "structlit",
     "array", "struct member", "struct initialisation",
     
     "funccall", "array access", "member access", "!",

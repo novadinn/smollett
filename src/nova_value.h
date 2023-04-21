@@ -4,23 +4,24 @@
 #include "ast.h"
 
 enum NovaValueType {
-	E_UNKNOWN, E_FUN, E_IDENT, E_CHAR, E_INT, E_FLOAT,
-	E_CHARLIT, E_INTLIT, E_FLOATLIT
+    E_UNKNOWN, E_FUN, E_IDENT, E_CHAR, E_INT, E_FLOAT,
+    E_CHARLIT, E_INTLIT, E_FLOATLIT
 };
 
 struct NovaValue {
-	NovaValueType type = NovaValueType::E_UNKNOWN;
-	int index = -1;
-	int env_index = -1;
+    NovaValueType type = NovaValueType::E_UNKNOWN;
+    
+    int index = -1;
+    int env_index = -1;
 };
 
 struct NovaFunData {
-	NovaValueType return_value = NovaValueType::E_UNKNOWN;
-	AST_Node block;
-	int env_index = -1;
+    NovaValueType return_value = NovaValueType::E_UNKNOWN;
+    AST_Node block;
+    int env_index = -1;
 
-	// FIXME: SLOW!!
-	std::vector<NovaValueType> types;
+    // FIXME: SLOW!!
+    std::vector<NovaValueType> types;
 };
 
 extern std::vector<NovaFunData> nova_funs;

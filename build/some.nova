@@ -13,12 +13,10 @@ fun factorial(n : int) -> int {
 var a = 15;
 var b = a + square(a);
 var c = factorial(5);
-<<<<<<< HEAD
 
 print(a);
 print(b);
 print(c);
-=======
+
 var d = odd(5);
 if (10 < 15 && 15 < 10 && 1 < 1) {}
->>>>>>> 1796014a00afc5f1d224cc9b39a4f78cfe494996

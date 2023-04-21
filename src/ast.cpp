@@ -17,8 +17,7 @@ const char *nodestr[] = {
     "&&",
     "||",
     "=",
-    "v++", "v--",
-    "++v", "--v",
+    "v++", "v--",    
 
     "ident",
     "intlit", "floatlit", "strlit", "charlit", "structlit",
@@ -27,7 +26,7 @@ const char *nodestr[] = {
     "funccall", "array access", "member access", "!",
 
     "var", "const", "if", "else", "while",
-    "do while", "for", "foreach", "fun", "return",
+    "for", "foreach", "fun", "return",
     "continue", "break", "print", "struct",
     "using",
     
@@ -57,15 +56,9 @@ const int opprec[] = {
 void print_node(AST_Node* node) {       
     printf("OperationType: %s\n", nodestr[(int)node->op]);    
     printf("Childs num: %d\n", node->child_num);
-<<<<<<< HEAD
-    // printf("Start: %d\n", node->child_start);
-    // printf("Index: %d\n", node->atable_index);
-    // printf("Index: %d\n", node->ttable_index);
-=======
     printf("Start: %d\n", node->child_start);
     printf("Index: %d\n", node->atable_index);
     printf("Index: %d\n", node->ttable_index);
->>>>>>> 1796014a00afc5f1d224cc9b39a4f78cfe494996
     
     for (int j = 0; j < node->child_num; ++j) {
 	print_node(&ast_nodes[node->child_start + j]);
@@ -287,18 +280,6 @@ void fatal(const char* s) {
 AST_Node prefix() {
     AST_Node node;
     switch(token->type) {
-    case T_INC:
-	nextt();
-	ident();
-	node = makenode(N_PREINC, token->table_index, 0, -1);
-	nextt();
-	break;
-    case T_DEC:
-	nextt();
-	ident();
-	node = makenode(N_PREDEC, token->table_index, 0, -1);
-	nextt();
-	break;
     case T_EXMARK:
 	nextt();
 	node = makenode(N_NOT, 0, 1, ast_push(literal()));	
@@ -476,10 +457,7 @@ std::vector<AST_Node> global_statements() {
 	    break;
 	case T_FOR:
 	    node = for_statement();
-	    break;
-	case T_DO:
-	    node = dowhile_statement();
-	    break;
+	    break;	
 	case T_WHILE:
 	    node = while_statement();
 	    break;
@@ -592,25 +570,6 @@ AST_Node while_statement() {
     int start = ast_push(nodes);
 
     return makenode(N_WHILE, 0, nodes.size(), start);
-}
-
-AST_Node dowhile_statement() {
-    std::vector<AST_Node> nodes;
-    match(T_DO);
-
-    nodes.push_back(block());
-
-    match(T_WHILE);
-
-    lparen();
-    nodes.push_back(binexpr(0));
-    rparen();
-    
-    semi();
-
-    int start = ast_push(nodes);
-    
-    return makenode(N_DOWHILE, 0, nodes.size(), start);
 }
 
 AST_Node for_statement() {
@@ -1036,10 +995,7 @@ AST_Node block() {
 	    break;
 	case T_FOR:
 	    node = for_statement();
-	    break;
-	case T_DO:
-	    node = dowhile_statement();
-	    break;
+	    break;	
 	case T_WHILE:
 	    node = while_statement();
 	    break;

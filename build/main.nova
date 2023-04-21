@@ -40,9 +40,9 @@ game_object_create(player);
 var arr1[4] : int;
 var arr2[4] : int {};
 
-for (var i = 0; i < 10; ++i) {}
-for (var i = 0; i < 10; ++i) outer { 
-    for (var j = 0; j < 10; ++j) {
+for (var i = 0; i < 10; i++) {}
+for (var i = 0; i < 10; i++) outer { 
+    for (var j = 0; j < 10; j++) {
 	break outer;
     }
 }
@@ -51,8 +51,6 @@ foreach (var v in arr1) {}
 foreach (var v, i in arr2) {}
 
 while (true) {}
-do {} while (true);
-
 if (true) {}
 
 if (!(0 > 1)) {

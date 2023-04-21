@@ -22,7 +22,7 @@ const char *tokstr[] = { "NONE", "EOF",
 	"{", "}", "(", ")",
 	"[", "]",
 	"import", "struct", "var", "fun",
-	"if", "else", "while", "for", "do", "return", "break", "continue",
+	"if", "else", "while", "for", "return", "break", "continue",
 	"const", "int", "char", "float", "void",
 	"print", "foreach", "in", "using"};
 

@@ -18,7 +18,6 @@ enum OperationType {
     N_OR,
     N_ASSIGN,
     N_POSTINC, N_POSTDEC,
-    N_PREINC, N_PREDEC,
 
     N_IDENT,
     N_INTLIT, N_FLOATLIT, N_STRLIT, N_CHARLIT, N_STRUCTLIT,
@@ -27,7 +26,7 @@ enum OperationType {
     N_FUNCCALL, N_ARAC, N_MEMBAC, N_NOT,
 
     N_VAR, N_CONST, N_IF, N_ELSE, N_WHILE,
-    N_DOWHILE, N_FOR, N_FOREACH, N_FUN, N_RETURN,
+    N_FOR, N_FOREACH, N_FUN, N_RETURN,
     N_CONTINUE, N_BREAK, N_PRINT, N_STRUCT,
     N_USING,
 
@@ -89,7 +88,6 @@ void rbrace();
 
 std::vector<AST_Node> import_statement();
 AST_Node while_statement();
-AST_Node dowhile_statement();
 AST_Node for_statement();
 AST_Node foreach_statement();
 AST_Node if_statement();

@@ -56,9 +56,9 @@ const int opprec[] = {
 void print_node(AST_Node* node) {       
     printf("OperationType: %s\n", nodestr[(int)node->op]);    
     printf("Childs num: %d\n", node->child_num);
-    printf("Start: %d\n", node->child_start);
-    printf("Index: %d\n", node->atable_index);
-    printf("Index: %d\n", node->ttable_index);
+    // printf("Start: %d\n", node->child_start);
+    // printf("Index: %d\n", node->atable_index);
+    // printf("Index: %d\n", node->ttable_index);
     
     for (int j = 0; j < node->child_num; ++j) {
 	print_node(&ast_nodes[node->child_start + j]);

@@ -11,7 +11,11 @@ NovaValue eval_program(AST_Node node, int env_index);
 NovaValue eval_block(AST_Node node, int env_index);
 NovaValue eval_function(AST_Node node, int env_index);
 NovaValue eval_function_call(AST_Node node, int env_index);
+
 NovaValue eval_return(AST_Node node, int env_index);
+NovaValue eval_break(AST_Node node, int env_index);
+NovaValue eval_continue(AST_Node node, int env_index);
+
 NovaValue eval_var(AST_Node node, int env_index);
 NovaValue eval_ident(AST_Node node, int env_index);
 

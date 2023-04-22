@@ -31,6 +31,12 @@ NovaValue eval_rec(AST_Node node, int env_index) {
 	case OperationType::N_RETURN: {
 		return eval_return(node, env_index);
 	} break;
+	case OperationType::N_BREAK: {
+		return eval_break(node, env_index);
+	} break;
+	case OperationType::N_CONTINUE: {
+		return eval_continue(node, env_index);
+	} break;
 	case OperationType::N_VAR: {
 		return eval_var(node, env_index);
 	} break;
@@ -151,27 +157,28 @@ const char *nodestr2[] = {
 };
 
 NovaValue eval_block(AST_Node node, int env_index) {
-	// Store the last evaluated element, and return it after
-	NovaValue fin;
 	// Evaluate every element
 	for(int i = node.child_start; i < node.child_start + node.child_num; ++i) {
+		// Store the last evaluated element, and return it after
+		NovaValue fin;
+		
 		AST_Node element = ast_nodes[i];
 		fin = eval_rec(element, env_index);
-		
-		// TODO: check for all cases where subblocks can contains a return statement (if/for/while...)
-		switch(element.op) {
-		case N_RETURN: {
+
+		switch(fin.payload) {
+		case P_RETURN: {
 			return fin;
 		} break;
-		case N_IF: {
-			if(fin.type != NovaValueType::E_UNKNOWN) {
-				return fin;
-			}
-		} break;
+		case P_BREAK: {
+			return fin;
+		};
+		case P_CONTINUE: {
+			return fin;
+		};
 		};
 	}
 
-	return fin;
+	return NovaValue{NovaValueType::E_UNKNOWN};
 }
 
 NovaValue eval_function(AST_Node node, int env_index) {
@@ -266,8 +273,23 @@ NovaValue eval_function_call(AST_Node node, int env_index) {
 NovaValue eval_return(AST_Node node, int env_index) {
 	AST_Node return_value = ast_nodes[node.child_start];
 	NovaValue eval_value = eval_rec(return_value, env_index);
+	eval_value.payload = NovaPayloadFlag::P_RETURN;
 
 	return eval_value;
+}
+
+NovaValue eval_break(AST_Node node, int env_index) {
+	NovaValue result;
+	result.payload = P_BREAK;
+
+	return result;
+}
+
+NovaValue eval_continue(AST_Node node, int env_index) {
+	NovaValue result;
+	result.payload = P_CONTINUE;
+	
+	return result;
 }
 
 NovaValue eval_var(AST_Node node, int env_index) {
@@ -484,9 +506,19 @@ NovaValue eval_for(AST_Node node, int env_index) {
 			break;
 		}
 
-		// TODO: check for a return statement
 		// Evaluated the loop body
-		eval_rec(block, local_env_index);
+		NovaValue result = eval_rec(block, local_env_index);
+		switch(result.payload) {
+		case NovaPayloadFlag::P_RETURN: {
+			return result;
+		} break;
+		case NovaPayloadFlag::P_BREAK: {
+			return NovaValue{NovaValueType::E_UNKNOWN};
+		} break;
+		case NovaPayloadFlag::P_CONTINUE: {
+		} break;
+		};
+		
 		eval_rec(post, local_env_index);
 	}
 
@@ -509,8 +541,12 @@ NovaValue eval_while(AST_Node node, int env_index) {
 			break;
 		}
 
-		// TODO: check for a return statement
-		eval_rec(block, local_env_index);
+		NovaValue result = eval_rec(block, local_env_index);
+		switch(result.payload) {
+		case NovaPayloadFlag::P_RETURN: {
+			return result;
+		};
+		};
 	}
 	
 	return NovaValue{NovaValueType::E_UNKNOWN};
@@ -634,12 +670,40 @@ NovaValue eval_and(AST_Node node, int env_index) {
 	AST_Node left = ast_nodes[node.child_start];
 	AST_Node right = ast_nodes[node.child_start+1];
 
-	printf("%s\n", nodestr2[left.op]);
-	printf("%s\n", nodestr2[right.op]);
+	NovaValue left_nv = eval_rec(left, env_index);
+	NovaValue right_nv = eval_rec(right, env_index);
+
+	char left_result = nova_chars[left_nv.index];
+	char right_result = nova_chars[right_nv.index];
+
+	NovaValue result = NovaValue{NovaValueType::E_CHARLIT};
+	if(left_result == 0 || right_result == 0) {
+		result.index = nova_chars_push(0);
+	} else {
+		result.index = nova_chars_push(1);
+	}
+
+	return result;
 }
 
 NovaValue eval_or(AST_Node node, int env_index) {
+	AST_Node left = ast_nodes[node.child_start];
+	AST_Node right = ast_nodes[node.child_start+1];
 
+	NovaValue left_nv = eval_rec(left, env_index);
+	NovaValue right_nv = eval_rec(right, env_index);
+
+	char left_result = nova_chars[left_nv.index];
+	char right_result = nova_chars[right_nv.index];
+
+	NovaValue result = NovaValue{NovaValueType::E_CHARLIT};
+	if(left_result == 0 && right_result == 0) {
+		result.index = nova_chars_push(0);
+	} else {
+		result.index = nova_chars_push(1);
+	}
+
+	return result;
 }
 
 NovaValue eval_post_increment(AST_Node node, int env_index) {

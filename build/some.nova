@@ -11,12 +11,20 @@ fun factorial(n : int) -> int {
 	return n * factorial(n - 1);
 }
 
-var a = 15;
+for (var i = 0; i < 10; i++) {
+    for (var j = 0; j < 10; j++) {
+    	if(n == i + j) {}
+    }
+}
+
+var a = -0.2315;
 var b = a + square(a);
 var c = factorial(5);
 print(a);
 print(b);
 print(c);
+
+var a = 15 - 2;
 
 /* multiline comment
 var d = odd(5);

@@ -67,6 +67,16 @@ Token lexer_read_token(Lexer* lexer) {
 	    token.type = TokenType::T_ARROW;
 	} else if (c == '-') {
 	    token.type = TokenType::T_DEC;
+	} else if(isdigit(c)) {
+	    bool has_decimal;
+	    double val = lexer_read_number(lexer, c, &has_decimal);
+	    if(has_decimal) {
+		token.type = TokenType::T_FLOATLIT;
+		tokens_floatlit_push(&token, -val);
+	    } else {
+		token.type = TokenType::T_INTLIT;
+		tokens_intlit_push(&token, -(int)val);
+	    }
 	} else {
 	    lexer->index--;
 	    token.type = TokenType::T_MINUS;

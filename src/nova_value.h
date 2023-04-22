@@ -8,11 +8,18 @@ enum NovaValueType {
     E_CHARLIT, E_INTLIT, E_FLOATLIT
 };
 
+// TODO: instead of this, just use combined flags
+enum NovaPayloadFlag {
+	P_NONE, P_RETURN, P_BREAK, P_CONTINUE
+};
+
 struct NovaValue {
     NovaValueType type = NovaValueType::E_UNKNOWN;
     
     int index = -1;
     int env_index = -1;
+	// TODO: instead of this, just use combined flags
+	NovaPayloadFlag payload = NovaPayloadFlag::P_NONE;
 };
 
 struct NovaFunData {

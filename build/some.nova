@@ -4,7 +4,7 @@ fun square(a : int) -> int {
 
 fun factorial(n : int) -> int {
 	if(!(n > 1)) {
-	// comment
+		// comment
 		return 1;
 	}
 	
@@ -19,6 +19,6 @@ print(b);
 print(c);
 
 /* multiline comment
-var d = odd(5);
-if (10 < 15 && 15 < 10 && 1 < 1) {}
+   var d = odd(5);
+   if (10 < 15 && 15 < 10 && 1 < 1) {}
 */

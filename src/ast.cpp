@@ -30,7 +30,7 @@ const char *nodestr[] = {
     "continue", "break", "print", "struct",
     "using",
     
-    "int", "char", "float", "void",
+    "int", "char", "float", "void", "string",
 
     "pgr", "block",
 };
@@ -253,6 +253,7 @@ void matchtype() {
        && token->type != T_FLOAT
        && token->type != T_CHAR
        && token->type != T_VOID
+       && token->type != T_STRING
        && token->type != T_IDENT)
 	fatalln("token type doesn't match \"type\" type");
 }
@@ -1022,6 +1023,9 @@ AST_Node type() {
 	break;
     case T_VOID:
 	node = makenode(N_VOID, 0, 0, 0);
+	break;
+    case T_STRING:
+	node = makenode(N_STRING, 0, 0, 0);
 	break;
     case T_IDENT:
 	node = makenode(N_IDENT, token->table_index, 0, -1);

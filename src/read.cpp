@@ -378,6 +378,8 @@ TokenType lexer_read_keyword(Lexer* lexer, char* s) {
     case 's': {
 	if(!strcmp(s, "struct"))
 	    return TokenType::T_STRUCT;
+	if(!strcmp(s, "string"))
+	    return TokenType::T_STRING;
     } break;
     case 'v': {
 	if(!strcmp(s, "var"))

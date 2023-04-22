@@ -30,7 +30,7 @@ enum OperationType {
     N_CONTINUE, N_BREAK, N_PRINT, N_STRUCT,
     N_USING,
 
-    N_INT, N_CHAR, N_FLOAT, N_VOID,
+    N_INT, N_CHAR, N_FLOAT, N_VOID, N_STRING,
 
     N_PRGRM, N_BLOCK,
 };

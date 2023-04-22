@@ -17,6 +17,7 @@ for (var i = 0; i < 10; i++) {
     }
 }
 
+var s: string = "qwe";
 var a = -0.2315;
 var b = a + square(a);
 var c = factorial(5);

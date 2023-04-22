@@ -25,7 +25,7 @@ const char *nodestr[] = {
     
     "funccall", "array access", "member access", "!",
 
-    "var", "const", "if", "else", "while",
+    "var", "if", "else", "while",
     "for", "foreach", "fun", "return",
     "continue", "break", "print", "struct",
     "using",
@@ -447,10 +447,6 @@ std::vector<AST_Node> global_statements() {
 	    node = var_declaration();	    
 	    semi();
 	    break;
-	case T_CONST:
-	    node = const_declaration();
-	    semi();
-	    break;
 	case T_IF:
 	    node = if_statement();
 	    break;
@@ -743,27 +739,6 @@ AST_Node using_statement() {
     return makenode(N_USING, 0, 1, start);
 }
 
-AST_Node const_declaration(bool need_type) {
-    match(T_CONST);
-
-    std::vector<AST_Node> nodes;
-    
-    nodes.push_back(ident_declaration(need_type));
-
-    while(1) {
-	if (token->type == T_COMMA) {
-	    nextt();
-	    nodes.push_back(ident_declaration(need_type));	    
-	} else {
-	    break;
-	}
-    }
-
-    int start = ast_push(nodes);
-
-    return makenode(N_CONST, 0, nodes.size(), start);
-}
-
 AST_Node fun_declaration() {
     match(T_FUN);
 
@@ -983,10 +958,6 @@ AST_Node block() {
 	switch(token->type) {
 	case T_VAR:
 	    node = var_declaration();
-	    semi();
-	    break;
-	case T_CONST:
-	    node = const_declaration();
 	    semi();
 	    break;
 	case T_IF:

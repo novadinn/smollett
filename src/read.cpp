@@ -345,8 +345,7 @@ int lexer_read_identifier(Lexer* lexer, char c, char* buf) {
     return i;
 }
 
-TokenType lexer_read_keyword(Lexer* lexer, char* s) {
-    // TODO: import, struct, var, fun, return, break, continue, const, char, float
+TokenType lexer_read_keyword(Lexer* lexer, char* s) {    
     switch(*s) {
     case 'i': {
 	if(!strcmp(s, "int"))
@@ -397,8 +396,6 @@ TokenType lexer_read_keyword(Lexer* lexer, char* s) {
     case 'c': {
 	if(!strcmp(s, "char"))
 	    return TokenType::T_CHAR;
-	if(!strcmp(s, "const"))
-	    return TokenType::T_CONST;
 	if(!strcmp(s, "continue"))
 	    return TokenType::T_CONTINUE;
     } break;

@@ -23,7 +23,7 @@ const char *tokstr[] = { "NONE", "EOF",
 	"[", "]",
 	"import", "struct", "var", "fun",
 	"if", "else", "while", "for", "return", "break", "continue",
-	"const", "int", "char", "float", "void",
+	"int", "char", "float", "void",
 	"print", "foreach", "in", "using"};
 
 extern std::vector<int> tokens_intlit;

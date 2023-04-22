@@ -25,7 +25,7 @@ enum OperationType {
 
     N_FUNCCALL, N_ARAC, N_MEMBAC, N_NOT,
 
-    N_VAR, N_CONST, N_IF, N_ELSE, N_WHILE,
+    N_VAR, N_IF, N_ELSE, N_WHILE,
     N_FOR, N_FOREACH, N_FUN, N_RETURN,
     N_CONTINUE, N_BREAK, N_PRINT, N_STRUCT,
     N_USING,
@@ -97,7 +97,6 @@ AST_Node break_statement();
 AST_Node print_statement();
 AST_Node using_statement();
 
-AST_Node const_declaration(bool need_type = true);
 AST_Node fun_declaration();
 AST_Node var_declaration(bool need_type = true);
 AST_Node struct_member_declaration();

@@ -30,7 +30,7 @@ enum TokenType {
     // Keywords
     T_IMPORT, T_STRUCT, T_VAR, T_FUN,
     T_IF, T_ELSE, T_WHILE, T_FOR, T_RETURN, T_BREAK, T_CONTINUE,
-    T_CONST, T_INT, T_CHAR, T_FLOAT, T_VOID,
+    T_INT, T_CHAR, T_FLOAT, T_VOID,
     T_PRINT, T_FOREACH, T_IN, T_USING,    
 };
 

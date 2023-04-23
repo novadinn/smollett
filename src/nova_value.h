@@ -3,9 +3,12 @@
 
 #include "ast.h"
 
+#include <string>
+
 enum NovaValueType {
-    E_UNKNOWN, E_FUN, E_IDENT, E_CHAR, E_INT, E_FLOAT,
-    E_CHARLIT, E_INTLIT, E_FLOATLIT
+    E_UNKNOWN, E_FUN, E_IDENT, E_CHAR, E_INT, E_FLOAT, E_STRING, E_ARRAY,
+	// TODO: those are not needed: they are stored in token tables
+    E_CHARLIT, E_INTLIT, E_FLOATLIT, E_STRINGLIT
 };
 
 // TODO: instead of this, just use combined flags
@@ -35,21 +38,15 @@ extern std::vector<NovaFunData> nova_funs;
 extern std::vector<int> nova_integers;
 extern std::vector<float> nova_floats;
 extern std::vector<char> nova_chars;
+extern std::vector<std::string> nova_strings;
+// FIXME: SLOW!! Use an ArrayData (like for funs) instead
+extern std::vector<std::vector<NovaValue>> nova_arrays;
 
-void nova_funs_init(int length);
 int nova_funs_push(NovaFunData data);
-void nova_funs_clear();
-
-void nova_integers_init(int length);
 int nova_integers_push(int value);
-void nova_integers_clear();
-
-void nova_floats_init(int length);
 int nova_floats_push(float value);
-void nova_floats_clear();
-
-void nova_chars_init(int length);
 int nova_chars_push(char value);
-void nova_chars_clear();
+int nova_strings_push(std::string value);
+int nova_arrays_push(std::vector<NovaValue> value);
 
 #endif // NOVA_VALUE_H

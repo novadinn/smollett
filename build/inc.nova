@@ -1,4 +1,0 @@
-var n = 10;
-print(n);
-n++;
-print(n);

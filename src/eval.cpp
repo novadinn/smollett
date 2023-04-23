@@ -9,6 +9,11 @@ extern std::vector<char*> tokens_ident;
 extern std::vector<AST_Node> ast_nodes;
 extern std::vector<Enviroinment> envs;
 
+// TODO:
+// N_ARRAY, N_ARAC, N_FOREACH
+// N_STRUCTLIT, N_STRUCTMEM, N_STRUCTINIT, N_MEMBAC, N_STRUCT, N_USING
+// N_VOID (mb dont needed)
+
 void eval(AST_Node program, int env_index) {
 	eval_rec(program, env_index);
 }
@@ -52,6 +57,9 @@ NovaValue eval_rec(AST_Node node, int env_index) {
 	case OperationType::N_CHARLIT: {
 		return eval_charlit(node, env_index);
 	};
+	case OperationType::N_STRLIT: {
+		return eval_stringlit(node, env_index);
+	} break;
 	case OperationType::N_PLUS: {
 		return eval_plus(node, env_index);
 	} break;
@@ -78,6 +86,9 @@ NovaValue eval_rec(AST_Node node, int env_index) {
 	} break;
 	case OperationType::N_WHILE: {
 		return eval_while(node, env_index);
+	} break;
+	case OperationType::N_ARAC: {
+		return eval_array_access(node, env_index);
 	} break;
 	case OperationType::N_GT: {
 		return eval_greater_than(node, env_index);
@@ -137,8 +148,7 @@ const char *nodestr2[] = {
     "&&",
     "||",
     "=",
-    "v++", "v--",
-    "++v", "--v",
+    "v++", "v--",    
 
     "ident",
     "intlit", "floatlit", "strlit", "charlit", "structlit",
@@ -146,12 +156,12 @@ const char *nodestr2[] = {
     
     "funccall", "array access", "member access", "!",
 
-    "var", "const", "if", "else", "while",
-    "do while", "for", "foreach", "fun", "return",
+    "var", "if", "else", "while",
+    "for", "foreach", "fun", "return",
     "continue", "break", "print", "struct",
     "using",
     
-    "int", "char", "float", "void",
+    "int", "char", "float", "void", "string",
 
     "pgr", "block",
 };
@@ -297,19 +307,56 @@ NovaValue eval_var(AST_Node node, int env_index) {
 	NovaValue fin;
 	// Loop over multiple definitions (var a = 0, b = 0;)
 	for(int i = node.child_start; i < node.child_start + node.child_num; ++i) {
-		AST_Node assign = ast_nodes[i];
-		AST_Node lhs = ast_nodes[assign.child_start];	
-		AST_Node rhs = ast_nodes[assign.child_start+1];
+		AST_Node child = ast_nodes[i];
+		NovaValue result;
+		// Variable with a value
+		if(child.op == OperationType::N_ASSIGN) {
+			AST_Node lhs = ast_nodes[child.child_start];	
+			AST_Node rhs = ast_nodes[child.child_start+1];
 
-		char* var_name = tokens_ident[lhs.ttable_index];
-		NovaValue result = eval_rec(rhs, env_index);
-		// Type is specified
-		if(lhs.child_num == 1) {
-			AST_Node type_node = ast_nodes[lhs.child_start];
-			// TODO: check if type is correct. If not, log error
+			char* var_name = tokens_ident[lhs.ttable_index];
+			result = eval_rec(rhs, env_index);
+			// Type is specified
+			if(lhs.child_num == 1) {
+				AST_Node type_node = ast_nodes[lhs.child_start];
+				// TODO: check if type is correct. If not, log error
+			}
+
+			// TODO: shoud we specify a type of the var here?
+		
+			env_push_value(env_index, var_name, result);
+		} else if(child.op == OperationType::N_IDENT) { // Variable with a specified type, with no value
+			AST_Node type = ast_nodes[child.child_start];
+
+			char* var_name = tokens_ident[child.ttable_index];
+			result = NovaValue{eval_ottonvt(type.op)};
+
+			env_push_value(env_index, var_name, result);
+		} else if(child.op == OperationType::N_ARRAY) {
+			AST_Node num_node = ast_nodes[child.child_start];
+			AST_Node ident_node = ast_nodes[child.child_start+1];
+			AST_Node type_node = ast_nodes[ident_node.child_start];
+			char* var_name = tokens_ident[ident_node.ttable_index];
+
+			NovaValue len_value = eval_rec(num_node, env_index);
+			// int num_elements = tokens_intlit[num_node.ttable_index];
+			// Evaluate the result in case size value is an ident or an expression
+			int num_elements = nova_integers[len_value.index];
+
+			// Reserve elements
+			std::vector<NovaValue> vec;
+			vec.reserve(num_elements);
+			for(int i = 0; i < num_elements; ++i) {
+				NovaValue element = NovaValue{eval_ottonvt(type_node.op)};
+				vec.push_back(element);
+			}
+
+			result = NovaValue{NovaValueType::E_ARRAY};
+			// Store the array
+			result.index = nova_arrays_push(vec);
+			
+			env_push_value(env_index, var_name, result);
 		}
-
-		env_push_value(env_index, var_name, result);
 
 		fin = result;
 	}
@@ -352,6 +399,15 @@ NovaValue eval_charlit(AST_Node node, int env_index) {
 	// Get the value from the tokens table
 	int value = tokens_charlit[node.ttable_index];
 	result.index = nova_chars_push(value);
+
+	return result;
+}
+
+NovaValue eval_stringlit(AST_Node node, int env_index) {
+	NovaValue result = NovaValue{NovaValueType::E_STRINGLIT};
+	// Get the value from the tokens table
+	char* value = tokens_strlit[node.ttable_index];
+	result.index = nova_strings_push(value);
 
 	return result;
 }
@@ -470,16 +526,38 @@ NovaValue eval_else(AST_Node node, int env_index) {
 }
 
 NovaValue eval_assign(AST_Node node, int env_index) {
+	NovaValue result = NovaValue{NovaValueType::E_UNKNOWN};
+	
 	AST_Node left = ast_nodes[node.child_start];
 	AST_Node right = ast_nodes[node.child_start+1];
+	if(left.op == OperationType::N_IDENT) {
 
-	char* name = tokens_ident[left.ttable_index];
+		char* name = tokens_ident[left.ttable_index];
 
-	NovaValue nv = envs_search(name, env_index);
+		NovaValue nv = envs_search(name, env_index);
+		// TODO: check if we havent found a value
 
-	NovaValue result = eval_rec(right, env_index);
-	
-	env_set_by_name(env_index, name, result);
+		result = eval_rec(right, env_index);
+
+		env_set_by_name(env_index, name, result);
+	} else if(left.op == OperationType::N_ARAC) {
+		AST_Node ident_node = ast_nodes[left.child_start];
+		AST_Node index_node = ast_nodes[left.child_start+1];
+
+		NovaValue size_value = eval_rec(index_node, env_index);
+		
+		char* name = tokens_ident[ident_node.ttable_index];
+		int index = nova_integers[size_value.index];
+
+		NovaValue nv = envs_search(name, env_index);
+
+		std::vector<NovaValue> vec = nova_arrays[nv.index];
+		
+		result = eval_rec(right, env_index);
+
+		// NOTE: seems like we dont need to update an env
+		nova_arrays[nv.index][index] = result;
+	}
 
 	return result;
 }
@@ -550,6 +628,22 @@ NovaValue eval_while(AST_Node node, int env_index) {
 	}
 	
 	return NovaValue{NovaValueType::E_UNKNOWN};
+}
+
+NovaValue eval_array_access(AST_Node node, int env_index) {
+	AST_Node ident_node = ast_nodes[node.child_start];
+	AST_Node index_node = ast_nodes[node.child_start+1];
+
+	// Eval the index in case of an ident or an expression
+	NovaValue index_value = eval_rec(index_node, env_index);
+	
+	char* name = tokens_ident[ident_node.ttable_index];
+	// int index = tokens_intlit[index_node.ttable_index];
+	int index = nova_integers[index_value.index];
+
+	NovaValue nv = envs_search(name, env_index);
+
+	return nova_arrays[nv.index][index];
 }
 
 NovaValue eval_greater_than(AST_Node node, int env_index) {
@@ -756,7 +850,10 @@ NovaValue eval_print(AST_Node node, int env_index) {
 	} break;
 	case NovaValueType::E_CHARLIT: {
 		printf("%c\n", nova_chars[nv.index]);
-	};
+	} break;
+	case NovaValueType::E_STRINGLIT: {
+		printf("%s\n", nova_strings[nv.index].c_str());
+	} break;
 	};
 	
 	return NovaValue{NovaValueType::E_UNKNOWN};
@@ -772,6 +869,9 @@ NovaValueType eval_ottonvt(OperationType type) {
 	} break;
 	case OperationType::N_FLOAT: {
 		return NovaValueType::E_FLOAT;
+	} break;
+	case OperationType::N_STRING: {
+		return NovaValueType::E_STRING;
 	} break;
 	};
 

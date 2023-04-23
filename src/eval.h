@@ -22,6 +22,7 @@ NovaValue eval_ident(AST_Node node, int env_index);
 NovaValue eval_intlit(AST_Node node, int env_index);
 NovaValue eval_floatlit(AST_Node node, int env_index);
 NovaValue eval_charlit(AST_Node node, int env_index);
+NovaValue eval_stringlit(AST_Node node, int env_index);
 
 NovaValue eval_plus(AST_Node node, int env_index);
 NovaValue eval_minus(AST_Node node, int env_index);
@@ -33,6 +34,7 @@ NovaValue eval_else(AST_Node node, int env_index);
 NovaValue eval_assign(AST_Node node, int env_index);
 NovaValue eval_for(AST_Node node, int env_index);
 NovaValue eval_while(AST_Node node, int env_index);
+NovaValue eval_array_access(AST_Node node, int env_index);
 
 NovaValue eval_greater_than(AST_Node node, int env_index);
 NovaValue eval_less_than(AST_Node node, int env_index);

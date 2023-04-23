@@ -36,7 +36,7 @@ enum TokenType {
 
 struct Token {
     TokenType type;
-    int table_index;
+    int table_index = -1;
     int line;
     int index;
 };

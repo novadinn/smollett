@@ -58,7 +58,7 @@ void print_node(AST_Node* node) {
     printf("Childs num: %d\n", node->child_num);
     // printf("Start: %d\n", node->child_start);
     // printf("Index: %d\n", node->atable_index);
-    // printf("Index: %d\n", node->ttable_index);
+    printf("Index: %d\n", node->ttable_index);
     
     for (int j = 0; j < node->child_num; ++j) {
 	print_node(&ast_nodes[node->child_start + j]);
@@ -298,9 +298,11 @@ AST_Node postfix() {
     
     switch(token->type) {
     case T_LPAREN:
+	prevt();
 	node = funccall();
 	break;
     case T_LBRACK:
+	prevt();
 	node = array_access();
 	break;
     case T_INC:
@@ -365,8 +367,11 @@ AST_Node literal() {
 
 AST_Node array_access() {
     std::vector<AST_Node> nodes;
-    
+
+    ident();
     nodes.push_back(makenode(N_IDENT, token->table_index, 0, -1));
+    nextt();
+    
     lbrack();
 
     nodes.push_back(binexpr(0));
@@ -380,8 +385,10 @@ AST_Node array_access() {
 
 AST_Node funccall() {
     std::vector<AST_Node> nodes;
+    ident();
     nodes.push_back(makenode(N_IDENT, token->table_index, 0, -1));
-
+    nextt();
+    
     lparen();
 
     while(1) {

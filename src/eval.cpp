@@ -19,6 +19,7 @@ void eval(AST_Node program, int env_index) {
 	eval_rec(program, env_index);
 }
 
+// TODO: we dont have a default values
 // TODO: we are not clearing the envs and nova_* vectors
 NovaValue eval_rec(AST_Node node, int env_index) {
 	switch(node.op) {
@@ -346,9 +347,27 @@ NovaValue eval_var(AST_Node node, int env_index) {
 			// Reserve elements
 			std::vector<NovaValue> vec;
 			vec.reserve(num_elements);
+
 			for(int i = 0; i < num_elements; ++i) {
 				NovaValue element = NovaValue{eval_ottonvt(type_node.op)};
+				// TODO: fill the array with a default value
 				vec.push_back(element);
+			}
+
+			// Array with initialization
+			if(child.child_num == 3) { 
+				AST_Node init = ast_nodes[child.child_start+2];
+				ASSERT_ARRAY_SIZE(var_name, init.child_num, num_elements);
+				
+				// TODO: check if sizes are correct
+				for(int i = init.child_start; i < init.child_start+init.child_num; ++i) {
+					int vec_index = i - init.child_start;
+					AST_Node lit = ast_nodes[i];
+					// TODO: check that type is match (or can be converted)
+					NovaValue val = eval_rec(lit, env_index);
+
+					vec[vec_index] = val;
+				}
 			}
 
 			result = NovaValue{NovaValueType::E_ARRAY};
@@ -657,7 +676,7 @@ NovaValue eval_array_access(AST_Node node, int env_index) {
 	// Eval the index in case of an ident or an expression
 	NovaValue index_value = eval_rec(index_node, env_index);
 	ASSERT_IS_NUMBER(index_value, "array access");
-	int index = eval_retrieve_number(index_value); // nova_integers[index_value.index];
+	int index = eval_retrieve_number(index_value);
    
 	NovaValue nv = envs_search(name, env_index);
 	ASSERT_UNBOUND(nv, "name");

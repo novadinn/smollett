@@ -22,5 +22,8 @@
 #define ASSERT_IS_NUMBER(nv, sym)				\
 	ASSERT(nv.type == E_INTLIT || nv.type == E_FLOATLIT || nv.type == E_CHARLIT,	\
 		   "nova: %s is not a number\n", sym)
+#define ASSERT_ARRAY_SIZE(name, got, max)		\
+	ASSERT(got <= max,							\
+		   "nova: array %s too low for specifield initialization\n", name)
 
 #endif // LOG_H

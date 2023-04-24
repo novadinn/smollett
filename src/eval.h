@@ -34,6 +34,7 @@ NovaValue eval_else(AST_Node node, int env_index);
 NovaValue eval_assign(AST_Node node, int env_index);
 NovaValue eval_for(AST_Node node, int env_index);
 NovaValue eval_while(AST_Node node, int env_index);
+NovaValue eval_foreach(AST_Node node, int env_index);
 NovaValue eval_array_access(AST_Node node, int env_index);
 
 NovaValue eval_greater_than(AST_Node node, int env_index);

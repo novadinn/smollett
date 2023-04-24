@@ -1,24 +1,12 @@
 fun factorial(n : int) -> int {
 	if(n <= 1) {
-		return 1;
+	return 1;
+	
 	}
 
 	return n * factorial(n - 1);
 }
 
-var arr[3] : int;
-arr[0] = 1;
-arr[1] = 3;
-arr[2] = 5;
+var a = factorial(5);
 
-print(arr[0]);
-print(arr[1]);
-print(arr[2]);
-
-var len : int = 10;
-var arr2[len] : int;
-
-for(var i = 0; i < len; i++) {
-	arr2[i] = i*2;
-	print(arr2[i]);
-}
+print(a);

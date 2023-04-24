@@ -1,5 +1,7 @@
 #include "eval.h"
 
+#include "log.h"
+
 extern std::vector<int> tokens_intlit;
 extern std::vector<float> tokens_floatlit;
 extern std::vector<char> tokens_charlit;
@@ -10,9 +12,8 @@ extern std::vector<AST_Node> ast_nodes;
 extern std::vector<Enviroinment> envs;
 
 // TODO:
-// N_ARRAY, N_ARAC, N_FOREACH
-// N_STRUCTLIT, N_STRUCTMEM, N_STRUCTINIT, N_MEMBAC, N_STRUCT, N_USING
-// N_VOID (mb dont needed)
+// N_STRUCTLIT, N_STRUCTMEM, N_STRUCTINIT, N_MEMBAC, N_STRUCT,
+// N_USING
 
 void eval(AST_Node program, int env_index) {
 	eval_rec(program, env_index);
@@ -86,6 +87,9 @@ NovaValue eval_rec(AST_Node node, int env_index) {
 	} break;
 	case OperationType::N_WHILE: {
 		return eval_while(node, env_index);
+	} break;
+	case OperationType::N_FOREACH: {
+		return eval_foreach(node, env_index);
 	} break;
 	case OperationType::N_ARAC: {
 		return eval_array_access(node, env_index);
@@ -175,6 +179,7 @@ NovaValue eval_block(AST_Node node, int env_index) {
 		AST_Node element = ast_nodes[i];
 		fin = eval_rec(element, env_index);
 
+		// Stop at marker
 		switch(fin.payload) {
 		case P_RETURN: {
 			return fin;
@@ -194,7 +199,7 @@ NovaValue eval_block(AST_Node node, int env_index) {
 NovaValue eval_function(AST_Node node, int env_index) {
 	// Create function's local env
 	int local_env_index = envs_push(env_index);
-	
+
 	NovaFunData data;
 
 	AST_Node name_node = ast_nodes[node.child_start];
@@ -206,7 +211,7 @@ NovaValue eval_function(AST_Node node, int env_index) {
 		AST_Node arg_node = ast_nodes[i];
 		// Type of the argument
 		AST_Node type_node = ast_nodes[arg_node.child_start];
-
+		
 		char* arg_name = tokens_ident[arg_node.ttable_index];
 		NovaValueType type = eval_ottonvt(type_node.op);
 
@@ -236,10 +241,11 @@ NovaValue eval_function_call(AST_Node node, int env_index) {
 	// Get the function name
 	char* fn_name = tokens_ident[name_node.ttable_index];
 
-	// TODO: check if function with that name does exists in envs
-	
 	// Search the function in the env
 	NovaValue function = envs_search(fn_name, env_index);
+	ASSERT_TYPE(fn_name, function.type, E_FUN, "function");
+	ASSERT_UNBOUND(function, fn_name);
+	
 	NovaFunData data = nova_funs[function.index];
 	NovaValueType return_value_type = data.return_value;
 	AST_Node block = data.block;
@@ -247,9 +253,7 @@ NovaValue eval_function_call(AST_Node node, int env_index) {
 
 	// Function argument count
 	int argc = node.child_num-1;
-	if(argc != data.types.size()) {
-		// TODO: log error: wrong argument count
-	}
+	ASSERT_FUN_ARGC(fn_name, argc, (int)data.types.size());
 	
 	// Get the arguments
 	for(int i = node.child_start + 1; i < node.child_start + node.child_num; ++i) {
@@ -274,8 +278,6 @@ NovaValue eval_function_call(AST_Node node, int env_index) {
 	if(eval_result.type != return_value_type) {
 		// TODO: check if got type can be converted to the expected type. If not, log error
 	}
-
-	// TODO: clear the function env after
 
 	return eval_result;
 }
@@ -322,8 +324,6 @@ NovaValue eval_var(AST_Node node, int env_index) {
 				// TODO: check if type is correct. If not, log error
 			}
 
-			// TODO: shoud we specify a type of the var here?
-		
 			env_push_value(env_index, var_name, result);
 		} else if(child.op == OperationType::N_IDENT) { // Variable with a specified type, with no value
 			AST_Node type = ast_nodes[child.child_start];
@@ -338,10 +338,10 @@ NovaValue eval_var(AST_Node node, int env_index) {
 			AST_Node type_node = ast_nodes[ident_node.child_start];
 			char* var_name = tokens_ident[ident_node.ttable_index];
 
-			NovaValue len_value = eval_rec(num_node, env_index);
-			// int num_elements = tokens_intlit[num_node.ttable_index];
 			// Evaluate the result in case size value is an ident or an expression
-			int num_elements = nova_integers[len_value.index];
+			NovaValue len_value = eval_rec(num_node, env_index);
+			ASSERT_IS_NUMBER(len_value, var_name);
+			int num_elements = (int)eval_retrieve_number(len_value);
 
 			// Reserve elements
 			std::vector<NovaValue> vec;
@@ -368,10 +368,7 @@ NovaValue eval_ident(AST_Node node, int env_index) {
 	char* sym = tokens_ident[node.ttable_index];
 
 	NovaValue result = envs_search(sym, env_index);
-	if(result.type == NovaValueType::E_UNKNOWN) {
-		// TODO: log error: unbound symbol
-		return NovaValue{NovaValueType::E_UNKNOWN};
-	}
+	ASSERT_UNBOUND(result, sym);
 	
 	return result;
 }
@@ -417,15 +414,16 @@ NovaValue eval_plus(AST_Node node, int env_index) {
 	AST_Node rhs = ast_nodes[node.child_start+1];
 
 	NovaValue left_nv = eval_rec(lhs, env_index);
+	ASSERT_IS_NUMBER(left_nv, "+ argument");
 	NovaValue right_nv = eval_rec(rhs, env_index);
-
+	ASSERT_IS_NUMBER(right_nv, "+ argument");
+	
 	double left_val = eval_retrieve_number(left_nv);
 	double right_val = eval_retrieve_number(right_nv);
 
 	NovaValueType type = eval_dominant_type(left_nv.type, right_nv.type);
 
 	NovaValue result = NovaValue{type};
-	// TODO: remove previous 2 from the nova_integers array
 	result.index = eval_push_number_from_type(type, left_val + right_val);
 	
 	return result;
@@ -436,7 +434,9 @@ NovaValue eval_minus(AST_Node node, int env_index) {
 	AST_Node rhs = ast_nodes[node.child_start+1];
 
 	NovaValue left_nv = eval_rec(lhs, env_index);
+	ASSERT_IS_NUMBER(left_nv, "- argument");
 	NovaValue right_nv = eval_rec(rhs, env_index);
+	ASSERT_IS_NUMBER(right_nv, "- argument");
 
 	double left_val = eval_retrieve_number(left_nv);
 	double right_val = eval_retrieve_number(right_nv);
@@ -444,7 +444,6 @@ NovaValue eval_minus(AST_Node node, int env_index) {
 	NovaValueType type = eval_dominant_type(left_nv.type, right_nv.type);
 
 	NovaValue result = NovaValue{type};
-	// TODO: remove previous 2 from the nova_integers array
 	result.index = eval_push_number_from_type(type, left_val - right_val);
 	
 	return result;
@@ -455,7 +454,9 @@ NovaValue eval_mult(AST_Node node, int env_index) {
 	AST_Node rhs = ast_nodes[node.child_start+1];
 
 	NovaValue left_nv = eval_rec(lhs, env_index);
+	ASSERT_IS_NUMBER(left_nv, "* argument");
 	NovaValue right_nv = eval_rec(rhs, env_index);
+	ASSERT_IS_NUMBER(right_nv, "* argument");
 
 	double left_val = eval_retrieve_number(left_nv);
 	double right_val = eval_retrieve_number(right_nv);
@@ -463,7 +464,6 @@ NovaValue eval_mult(AST_Node node, int env_index) {
 	NovaValueType type = eval_dominant_type(left_nv.type, right_nv.type);
 
 	NovaValue result = NovaValue{type};
-	// TODO: remove previous 2 from the nova_integers array
 	result.index = eval_push_number_from_type(type, left_val * right_val);
 	
 	return result;
@@ -474,7 +474,9 @@ NovaValue eval_div(AST_Node node, int env_index) {
 	AST_Node rhs = ast_nodes[node.child_start+1];
 
 	NovaValue left_nv = eval_rec(lhs, env_index);
+	ASSERT_IS_NUMBER(left_nv, "/ argument");
 	NovaValue right_nv = eval_rec(rhs, env_index);
+	ASSERT_IS_NUMBER(right_nv, "/ argument");
 
 	double left_val = eval_retrieve_number(left_nv);
 	double right_val = eval_retrieve_number(right_nv);
@@ -482,7 +484,6 @@ NovaValue eval_div(AST_Node node, int env_index) {
 	NovaValueType type = eval_dominant_type(left_nv.type, right_nv.type);
 
 	NovaValue result = NovaValue{type};
-	// TODO: remove previous 2 from the nova_integers array
 	result.index = eval_push_number_from_type(type, left_val / right_val);
 	
 	return result;
@@ -490,6 +491,7 @@ NovaValue eval_div(AST_Node node, int env_index) {
 
 NovaValue eval_if(AST_Node node, int env_index) {
 	NovaValue cond = eval_rec(ast_nodes[node.child_start], env_index);
+	ASSERT_TYPE("if condition", cond.type, E_CHARLIT, "char");
 	char result = nova_chars[cond.index];
 
 	if(result) {
@@ -527,15 +529,14 @@ NovaValue eval_else(AST_Node node, int env_index) {
 
 NovaValue eval_assign(AST_Node node, int env_index) {
 	NovaValue result = NovaValue{NovaValueType::E_UNKNOWN};
-	
+
 	AST_Node left = ast_nodes[node.child_start];
 	AST_Node right = ast_nodes[node.child_start+1];
 	if(left.op == OperationType::N_IDENT) {
-
 		char* name = tokens_ident[left.ttable_index];
 
 		NovaValue nv = envs_search(name, env_index);
-		// TODO: check if we havent found a value
+		ASSERT_UNBOUND(nv, name);
 
 		result = eval_rec(right, env_index);
 
@@ -545,11 +546,14 @@ NovaValue eval_assign(AST_Node node, int env_index) {
 		AST_Node index_node = ast_nodes[left.child_start+1];
 
 		NovaValue size_value = eval_rec(index_node, env_index);
+		ASSERT_IS_NUMBER(size_value, "array access");
 		
 		char* name = tokens_ident[ident_node.ttable_index];
-		int index = nova_integers[size_value.index];
+		// int index = nova_integers[size_value.index];
+		int index = (int)eval_retrieve_number(size_value); 
 
 		NovaValue nv = envs_search(name, env_index);
+		ASSERT_UNBOUND(nv, name);
 
 		std::vector<NovaValue> vec = nova_arrays[nv.index];
 		
@@ -576,6 +580,7 @@ NovaValue eval_for(AST_Node node, int env_index) {
 	eval_rec(declare, local_env_index);
 	for(;;) {
 		NovaValue cond_nv = eval_rec(cond, local_env_index);
+		ASSERT_TYPE("for condition", cond_nv.type, E_CHARLIT, "char");
 
 		char val = nova_chars[cond_nv.index];
 
@@ -594,6 +599,7 @@ NovaValue eval_for(AST_Node node, int env_index) {
 			return NovaValue{NovaValueType::E_UNKNOWN};
 		} break;
 		case NovaPayloadFlag::P_CONTINUE: {
+			// Do nothing, since result's evaluation is already stopped
 		} break;
 		};
 		
@@ -611,6 +617,7 @@ NovaValue eval_while(AST_Node node, int env_index) {
 
 	for(;;) {
 		NovaValue cond_nv = eval_rec(cond, local_env_index);
+		ASSERT_TYPE("for condition", cond_nv.type, E_CHARLIT, "char");
 
 		char val = nova_chars[cond_nv.index];
 
@@ -623,10 +630,21 @@ NovaValue eval_while(AST_Node node, int env_index) {
 		switch(result.payload) {
 		case NovaPayloadFlag::P_RETURN: {
 			return result;
-		};
+		} break;
+		case NovaPayloadFlag::P_BREAK: {
+			return NovaValue{NovaValueType::E_UNKNOWN};
+		} break;
+		case NovaPayloadFlag::P_CONTINUE: {
+			// Do nothing, since result's evaluation is already stopped
+		} break;
 		};
 	}
 	
+	return NovaValue{NovaValueType::E_UNKNOWN};
+}
+
+// TODO:
+NovaValue eval_foreach(AST_Node node, int env_index) {
 	return NovaValue{NovaValueType::E_UNKNOWN};
 }
 
@@ -634,14 +652,15 @@ NovaValue eval_array_access(AST_Node node, int env_index) {
 	AST_Node ident_node = ast_nodes[node.child_start];
 	AST_Node index_node = ast_nodes[node.child_start+1];
 
+	char* name = tokens_ident[ident_node.ttable_index];
+	
 	// Eval the index in case of an ident or an expression
 	NovaValue index_value = eval_rec(index_node, env_index);
-	
-	char* name = tokens_ident[ident_node.ttable_index];
-	// int index = tokens_intlit[index_node.ttable_index];
-	int index = nova_integers[index_value.index];
-
+	ASSERT_IS_NUMBER(index_value, "array access");
+	int index = eval_retrieve_number(index_value); // nova_integers[index_value.index];
+   
 	NovaValue nv = envs_search(name, env_index);
+	ASSERT_UNBOUND(nv, "name");
 
 	return nova_arrays[nv.index][index];
 }
@@ -651,7 +670,9 @@ NovaValue eval_greater_than(AST_Node node, int env_index) {
 	AST_Node rhs = ast_nodes[node.child_start+1];
 
 	NovaValue left_nv = eval_rec(lhs, env_index);
+	ASSERT_IS_NUMBER(left_nv, "> operand");
 	NovaValue right_nv = eval_rec(rhs, env_index);
+	ASSERT_IS_NUMBER(right_nv, "> operand");
 
 	double left_val = eval_retrieve_number(left_nv);
 	double right_val = eval_retrieve_number(right_nv);
@@ -667,7 +688,9 @@ NovaValue eval_less_than(AST_Node node, int env_index) {
 	AST_Node rhs = ast_nodes[node.child_start+1];
 
 	NovaValue left_nv = eval_rec(lhs, env_index);
+	ASSERT_IS_NUMBER(left_nv, "< operand");
 	NovaValue right_nv = eval_rec(rhs, env_index);
+	ASSERT_IS_NUMBER(right_nv, "< operand");
 
 	double left_val = eval_retrieve_number(left_nv);
 	double right_val = eval_retrieve_number(right_nv);
@@ -683,7 +706,9 @@ NovaValue eval_greater_than_or_equal(AST_Node node, int env_index) {
 	AST_Node rhs = ast_nodes[node.child_start+1];
 
 	NovaValue left_nv = eval_rec(lhs, env_index);
+	ASSERT_IS_NUMBER(left_nv, ">= operand");
 	NovaValue right_nv = eval_rec(rhs, env_index);
+	ASSERT_IS_NUMBER(right_nv, ">= operand");
 
 	double left_val = eval_retrieve_number(left_nv);
 	double right_val = eval_retrieve_number(right_nv);
@@ -699,7 +724,9 @@ NovaValue eval_less_than_or_equal(AST_Node node, int env_index) {
 	AST_Node rhs = ast_nodes[node.child_start+1];
 
 	NovaValue left_nv = eval_rec(lhs, env_index);
+	ASSERT_IS_NUMBER(left_nv, "<= operand");
 	NovaValue right_nv = eval_rec(rhs, env_index);
+	ASSERT_IS_NUMBER(right_nv, "<= operand");
 
 	double left_val = eval_retrieve_number(left_nv);
 	double right_val = eval_retrieve_number(right_nv);
@@ -715,7 +742,9 @@ NovaValue eval_equals(AST_Node node, int env_index) {
 	AST_Node rhs = ast_nodes[node.child_start+1];
 
 	NovaValue left_nv = eval_rec(lhs, env_index);
+	ASSERT_IS_NUMBER(left_nv, "== operand");
 	NovaValue right_nv = eval_rec(rhs, env_index);
+	ASSERT_IS_NUMBER(right_nv, "== operand");
 
 	double left_val = eval_retrieve_number(left_nv);
 	double right_val = eval_retrieve_number(right_nv);
@@ -731,7 +760,9 @@ NovaValue eval_not_equals(AST_Node node, int env_index) {
 	AST_Node rhs = ast_nodes[node.child_start+1];
 
 	NovaValue left_nv = eval_rec(lhs, env_index);
+	ASSERT_IS_NUMBER(left_nv, "!= operand");
 	NovaValue right_nv = eval_rec(rhs, env_index);
+	ASSERT_IS_NUMBER(right_nv, "!= operand");
 
 	double left_val = eval_retrieve_number(left_nv);
 	double right_val = eval_retrieve_number(right_nv);
@@ -746,6 +777,7 @@ NovaValue eval_not(AST_Node node, int env_index) {
 	AST_Node exp = ast_nodes[node.child_start];
 
 	NovaValue nv = eval_rec(exp, env_index);
+	ASSERT_TYPE("! argument", nv.type, E_CHARLIT, "char");
 
 	char val = nova_chars[nv.index];
 
@@ -765,7 +797,9 @@ NovaValue eval_and(AST_Node node, int env_index) {
 	AST_Node right = ast_nodes[node.child_start+1];
 
 	NovaValue left_nv = eval_rec(left, env_index);
+	ASSERT_TYPE("and argument", left_nv.type, E_CHARLIT, "char");
 	NovaValue right_nv = eval_rec(right, env_index);
+	ASSERT_TYPE("and argument", right_nv.type, E_CHARLIT, "char");
 
 	char left_result = nova_chars[left_nv.index];
 	char right_result = nova_chars[right_nv.index];
@@ -785,7 +819,9 @@ NovaValue eval_or(AST_Node node, int env_index) {
 	AST_Node right = ast_nodes[node.child_start+1];
 
 	NovaValue left_nv = eval_rec(left, env_index);
+	ASSERT_TYPE("or argument", left_nv.type, E_CHARLIT, "char");
 	NovaValue right_nv = eval_rec(right, env_index);
+	ASSERT_TYPE("or argument", right_nv.type, E_CHARLIT, "char");
 
 	char left_result = nova_chars[left_nv.index];
 	char right_result = nova_chars[right_nv.index];
@@ -801,12 +837,15 @@ NovaValue eval_or(AST_Node node, int env_index) {
 }
 
 NovaValue eval_post_increment(AST_Node node, int env_index) {
+	// TODO: this may not be an identifier (5++)
 	char* name = tokens_ident[node.ttable_index];
 	
 	// Search in the current env
 	NovaValue nv = envs_search(name, env_index);
-
+	ASSERT_UNBOUND(nv, name);
+	
 	NovaValue result = NovaValue{nv.type};
+	ASSERT_IS_NUMBER(result, "increment value");
 	double val = eval_retrieve_number(nv);
 
 	// Update the value
@@ -819,12 +858,15 @@ NovaValue eval_post_increment(AST_Node node, int env_index) {
 }
 
 NovaValue eval_post_decrement(AST_Node node, int env_index) {
+	// TODO: this may not be an identifier (5--)
 	char* name = tokens_ident[node.ttable_index];
 	
 	// Search in the current env
 	NovaValue nv = envs_search(name, env_index);
+	ASSERT_UNBOUND(nv, name);
 
 	NovaValue result = NovaValue{nv.type};
+	ASSERT_IS_NUMBER(result, "decrement value");
 	double val = eval_retrieve_number(nv);
 
 	// Update the value
@@ -854,6 +896,7 @@ NovaValue eval_print(AST_Node node, int env_index) {
 	case NovaValueType::E_STRINGLIT: {
 		printf("%s\n", nova_strings[nv.index].c_str());
 	} break;
+		// TODO: print an array
 	};
 	
 	return NovaValue{NovaValueType::E_UNKNOWN};
@@ -873,6 +916,7 @@ NovaValueType eval_ottonvt(OperationType type) {
 	case OperationType::N_STRING: {
 		return NovaValueType::E_STRING;
 	} break;
+		// TODO: should there be an array?
 	};
 
 	return NovaValueType::E_UNKNOWN;

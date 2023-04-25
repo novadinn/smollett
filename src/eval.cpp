@@ -21,7 +21,7 @@ void eval(AST_Node program, int env_index) {
 
 // TODO: we dont have a default values
 // TODO: we are not clearing the envs and nova_* vectors
-NovaValue eval_rec(AST_Node node, int env_index) {
+SmolValue eval_rec(AST_Node node, int env_index) {
 	switch(node.op) {
 	case OperationType::N_PRGRM: {
 		return eval_program(node, env_index);
@@ -133,16 +133,16 @@ NovaValue eval_rec(AST_Node node, int env_index) {
 	} break;
 	};
 
-	return NovaValue{E_UNKNOWN};
+	return SmolValue{E_UNKNOWN};
 }
 
-NovaValue eval_program(AST_Node node, int env_index) {
+SmolValue eval_program(AST_Node node, int env_index) {
 	// Evaluate every element
 	for(int i = node.child_start; i < node.child_start + node.child_num; ++i) {
 		eval_rec(ast_nodes[i], env_index);
 	}
 
-	return NovaValue{E_UNKNOWN};
+	return SmolValue{E_UNKNOWN};
 }
 
 const char *nodestr2[] = {
@@ -171,11 +171,11 @@ const char *nodestr2[] = {
     "pgr", "block",
 };
 
-NovaValue eval_block(AST_Node node, int env_index) {
+SmolValue eval_block(AST_Node node, int env_index) {
 	// Evaluate every element
 	for(int i = node.child_start; i < node.child_start + node.child_num; ++i) {
 		// Store the last evaluated element, and return it after
-		NovaValue fin;
+		SmolValue fin;
 		
 		AST_Node element = ast_nodes[i];
 		fin = eval_rec(element, env_index);
@@ -194,14 +194,14 @@ NovaValue eval_block(AST_Node node, int env_index) {
 		};
 	}
 
-	return NovaValue{NovaValueType::E_UNKNOWN};
+	return SmolValue{SmolValueType::E_UNKNOWN};
 }
 
-NovaValue eval_function(AST_Node node, int env_index) {
+SmolValue eval_function(AST_Node node, int env_index) {
 	// Create function's local env
 	int local_env_index = envs_push(env_index);
 
-	NovaFunData data;
+	SmolFunData data;
 
 	AST_Node name_node = ast_nodes[node.child_start];
 	
@@ -214,7 +214,7 @@ NovaValue eval_function(AST_Node node, int env_index) {
 		AST_Node type_node = ast_nodes[arg_node.child_start];
 		
 		char* arg_name = tokens_ident[arg_node.ttable_index];
-		NovaValueType type = eval_ottonvt(type_node.op);
+		SmolValueType type = eval_ottonvt(type_node.op);
 
 		// Store the unbound argument in the local env
 		env_push_unbound(local_env_index, arg_name, type);
@@ -228,8 +228,8 @@ NovaValue eval_function(AST_Node node, int env_index) {
 	data.block = block;
 	data.env_index = local_env_index;
 
-	int fn_index = nova_funs_push(data);
-	NovaValue result = {NovaValueType::E_FUN, fn_index};
+	int fn_index = smol_funs_push(data);
+	SmolValue result = {SmolValueType::E_FUN, fn_index};
 
 	// Store the function in the outer env
 	env_push_value(env_index, fn_name, result);
@@ -237,18 +237,18 @@ NovaValue eval_function(AST_Node node, int env_index) {
 	return result;
 }
 
-NovaValue eval_function_call(AST_Node node, int env_index) {
+SmolValue eval_function_call(AST_Node node, int env_index) {
 	AST_Node name_node = ast_nodes[node.child_start];
 	// Get the function name
 	char* fn_name = tokens_ident[name_node.ttable_index];
 
 	// Search the function in the env
-	NovaValue function = envs_search(fn_name, env_index);
+	SmolValue function = envs_search(fn_name, env_index);
 	ASSERT_TYPE(fn_name, function.type, E_FUN, "function");
 	ASSERT_UNBOUND(function, fn_name);
 	
-	NovaFunData data = nova_funs[function.index];
-	NovaValueType return_value_type = data.return_value;
+	SmolFunData data = smol_funs[function.index];
+	SmolValueType return_value_type = data.return_value;
 	AST_Node block = data.block;
 	int function_env_index = data.env_index;
 
@@ -263,10 +263,10 @@ NovaValue eval_function_call(AST_Node node, int env_index) {
 		AST_Node arg_node = ast_nodes[i];
 
 		// Evaluate the argument
-		NovaValue eval_arg = eval_rec(arg_node, env_index);
+		SmolValue eval_arg = eval_rec(arg_node, env_index);
 
-		NovaValueType got = eval_arg.type;
-		NovaValueType expected = data.types[env_types_index];
+		SmolValueType got = eval_arg.type;
+		SmolValueType expected = data.types[env_types_index];
 
 		if(got != expected) {
 			// TODO: check if got type can be converted to the expected type. If not, log error
@@ -275,7 +275,7 @@ NovaValue eval_function_call(AST_Node node, int env_index) {
 		env_set_unbound(function_env_index, env_types_index, eval_arg);
 	}
 	
-	NovaValue eval_result = eval_rec(block, function_env_index);
+	SmolValue eval_result = eval_rec(block, function_env_index);
 	if(eval_result.type != return_value_type) {
 		// TODO: check if got type can be converted to the expected type. If not, log error
 	}
@@ -283,35 +283,35 @@ NovaValue eval_function_call(AST_Node node, int env_index) {
 	return eval_result;
 }
 
-NovaValue eval_return(AST_Node node, int env_index) {
+SmolValue eval_return(AST_Node node, int env_index) {
 	AST_Node return_value = ast_nodes[node.child_start];
-	NovaValue eval_value = eval_rec(return_value, env_index);
-	eval_value.payload = NovaPayloadFlag::P_RETURN;
+	SmolValue eval_value = eval_rec(return_value, env_index);
+	eval_value.payload = SmolPayloadFlag::P_RETURN;
 
 	return eval_value;
 }
 
-NovaValue eval_break(AST_Node node, int env_index) {
-	NovaValue result;
+SmolValue eval_break(AST_Node node, int env_index) {
+	SmolValue result;
 	result.payload = P_BREAK;
 
 	return result;
 }
 
-NovaValue eval_continue(AST_Node node, int env_index) {
-	NovaValue result;
+SmolValue eval_continue(AST_Node node, int env_index) {
+	SmolValue result;
 	result.payload = P_CONTINUE;
 	
 	return result;
 }
 
-NovaValue eval_var(AST_Node node, int env_index) {
+SmolValue eval_var(AST_Node node, int env_index) {
 	// Store the last evaluated value
-	NovaValue fin;
+	SmolValue fin;
 	// Loop over multiple definitions (var a = 0, b = 0;)
 	for(int i = node.child_start; i < node.child_start + node.child_num; ++i) {
 		AST_Node child = ast_nodes[i];
-		NovaValue result;
+		SmolValue result;
 		// Variable with a value
 		if(child.op == OperationType::N_ASSIGN) {
 			AST_Node lhs = ast_nodes[child.child_start];	
@@ -330,7 +330,7 @@ NovaValue eval_var(AST_Node node, int env_index) {
 			AST_Node type = ast_nodes[child.child_start];
 
 			char* var_name = tokens_ident[child.ttable_index];
-			result = NovaValue{eval_ottonvt(type.op)};
+			result = SmolValue{eval_ottonvt(type.op)};
 
 			env_push_value(env_index, var_name, result);
 		} else if(child.op == OperationType::N_ARRAY) {
@@ -340,16 +340,16 @@ NovaValue eval_var(AST_Node node, int env_index) {
 			char* var_name = tokens_ident[ident_node.ttable_index];
 
 			// Evaluate the result in case size value is an ident or an expression
-			NovaValue len_value = eval_rec(num_node, env_index);
+			SmolValue len_value = eval_rec(num_node, env_index);
 			ASSERT_IS_NUMBER(len_value, var_name);
 			int num_elements = (int)eval_retrieve_number(len_value);
 
 			// Reserve elements
-			std::vector<NovaValue> vec;
+			std::vector<SmolValue> vec;
 			vec.reserve(num_elements);
 
 			for(int i = 0; i < num_elements; ++i) {
-				NovaValue element = NovaValue{eval_ottonvt(type_node.op)};
+				SmolValue element = SmolValue{eval_ottonvt(type_node.op)};
 				// TODO: fill the array with a default value
 				vec.push_back(element);
 			}
@@ -364,15 +364,15 @@ NovaValue eval_var(AST_Node node, int env_index) {
 					int vec_index = i - init.child_start;
 					AST_Node lit = ast_nodes[i];
 					// TODO: check that type is match (or can be converted)
-					NovaValue val = eval_rec(lit, env_index);
+					SmolValue val = eval_rec(lit, env_index);
 
 					vec[vec_index] = val;
 				}
 			}
 
-			result = NovaValue{NovaValueType::E_ARRAY};
+			result = SmolValue{SmolValueType::E_ARRAY};
 			// Store the array
-			result.index = nova_arrays_push(vec);
+			result.index = smol_arrays_push(vec);
 			
 			env_push_value(env_index, var_name, result);
 		}
@@ -383,135 +383,135 @@ NovaValue eval_var(AST_Node node, int env_index) {
 	return fin;
 }
 
-NovaValue eval_ident(AST_Node node, int env_index) {
+SmolValue eval_ident(AST_Node node, int env_index) {
 	char* sym = tokens_ident[node.ttable_index];
 
-	NovaValue result = envs_search(sym, env_index);
+	SmolValue result = envs_search(sym, env_index);
 	ASSERT_UNBOUND(result, sym);
 	
 	return result;
 }
 
-NovaValue eval_intlit(AST_Node node, int env_index) {
-	NovaValue result = NovaValue{NovaValueType::E_INTLIT};
+SmolValue eval_intlit(AST_Node node, int env_index) {
+	SmolValue result = SmolValue{SmolValueType::E_INTLIT};
 	// Get the value from the tokens table
 	int value = tokens_intlit[node.ttable_index];
-	result.index = nova_integers_push(value);
+	result.index = smol_integers_push(value);
 
 	return result;
 }
 
-NovaValue eval_floatlit(AST_Node node, int env_index) {
-	NovaValue result = NovaValue{NovaValueType::E_FLOATLIT};
+SmolValue eval_floatlit(AST_Node node, int env_index) {
+	SmolValue result = SmolValue{SmolValueType::E_FLOATLIT};
 	// Get the value from the tokens table
 	float value = tokens_floatlit[node.ttable_index];
-	result.index = nova_floats_push(value);
+	result.index = smol_floats_push(value);
 
 	return result;
 }
 
-NovaValue eval_charlit(AST_Node node, int env_index) {
-	NovaValue result = NovaValue{NovaValueType::E_CHARLIT};
+SmolValue eval_charlit(AST_Node node, int env_index) {
+	SmolValue result = SmolValue{SmolValueType::E_CHARLIT};
 	// Get the value from the tokens table
 	int value = tokens_charlit[node.ttable_index];
-	result.index = nova_chars_push(value);
+	result.index = smol_chars_push(value);
 
 	return result;
 }
 
-NovaValue eval_stringlit(AST_Node node, int env_index) {
-	NovaValue result = NovaValue{NovaValueType::E_STRINGLIT};
+SmolValue eval_stringlit(AST_Node node, int env_index) {
+	SmolValue result = SmolValue{SmolValueType::E_STRINGLIT};
 	// Get the value from the tokens table
 	char* value = tokens_strlit[node.ttable_index];
-	result.index = nova_strings_push(value);
+	result.index = smol_strings_push(value);
 
 	return result;
 }
 
-NovaValue eval_plus(AST_Node node, int env_index) {
+SmolValue eval_plus(AST_Node node, int env_index) {
 	AST_Node lhs = ast_nodes[node.child_start];
 	AST_Node rhs = ast_nodes[node.child_start+1];
 
-	NovaValue left_nv = eval_rec(lhs, env_index);
+	SmolValue left_nv = eval_rec(lhs, env_index);
 	ASSERT_IS_NUMBER(left_nv, "+ argument");
-	NovaValue right_nv = eval_rec(rhs, env_index);
+	SmolValue right_nv = eval_rec(rhs, env_index);
 	ASSERT_IS_NUMBER(right_nv, "+ argument");
 	
 	double left_val = eval_retrieve_number(left_nv);
 	double right_val = eval_retrieve_number(right_nv);
 
-	NovaValueType type = eval_dominant_type(left_nv.type, right_nv.type);
+	SmolValueType type = eval_dominant_type(left_nv.type, right_nv.type);
 
-	NovaValue result = NovaValue{type};
+	SmolValue result = SmolValue{type};
 	result.index = eval_push_number_from_type(type, left_val + right_val);
 	
 	return result;
 }
 
-NovaValue eval_minus(AST_Node node, int env_index) {
+SmolValue eval_minus(AST_Node node, int env_index) {
 	AST_Node lhs = ast_nodes[node.child_start];
 	AST_Node rhs = ast_nodes[node.child_start+1];
 
-	NovaValue left_nv = eval_rec(lhs, env_index);
+	SmolValue left_nv = eval_rec(lhs, env_index);
 	ASSERT_IS_NUMBER(left_nv, "- argument");
-	NovaValue right_nv = eval_rec(rhs, env_index);
+	SmolValue right_nv = eval_rec(rhs, env_index);
 	ASSERT_IS_NUMBER(right_nv, "- argument");
 
 	double left_val = eval_retrieve_number(left_nv);
 	double right_val = eval_retrieve_number(right_nv);
 
-	NovaValueType type = eval_dominant_type(left_nv.type, right_nv.type);
+	SmolValueType type = eval_dominant_type(left_nv.type, right_nv.type);
 
-	NovaValue result = NovaValue{type};
+	SmolValue result = SmolValue{type};
 	result.index = eval_push_number_from_type(type, left_val - right_val);
 	
 	return result;
 }
 
-NovaValue eval_mult(AST_Node node, int env_index) {
+SmolValue eval_mult(AST_Node node, int env_index) {
 	AST_Node lhs = ast_nodes[node.child_start];
 	AST_Node rhs = ast_nodes[node.child_start+1];
 
-	NovaValue left_nv = eval_rec(lhs, env_index);
+	SmolValue left_nv = eval_rec(lhs, env_index);
 	ASSERT_IS_NUMBER(left_nv, "* argument");
-	NovaValue right_nv = eval_rec(rhs, env_index);
+	SmolValue right_nv = eval_rec(rhs, env_index);
 	ASSERT_IS_NUMBER(right_nv, "* argument");
 
 	double left_val = eval_retrieve_number(left_nv);
 	double right_val = eval_retrieve_number(right_nv);
 
-	NovaValueType type = eval_dominant_type(left_nv.type, right_nv.type);
+	SmolValueType type = eval_dominant_type(left_nv.type, right_nv.type);
 
-	NovaValue result = NovaValue{type};
+	SmolValue result = SmolValue{type};
 	result.index = eval_push_number_from_type(type, left_val * right_val);
 	
 	return result;
 }
 
-NovaValue eval_div(AST_Node node, int env_index) {
+SmolValue eval_div(AST_Node node, int env_index) {
 	AST_Node lhs = ast_nodes[node.child_start];
 	AST_Node rhs = ast_nodes[node.child_start+1];
 
-	NovaValue left_nv = eval_rec(lhs, env_index);
+	SmolValue left_nv = eval_rec(lhs, env_index);
 	ASSERT_IS_NUMBER(left_nv, "/ argument");
-	NovaValue right_nv = eval_rec(rhs, env_index);
+	SmolValue right_nv = eval_rec(rhs, env_index);
 	ASSERT_IS_NUMBER(right_nv, "/ argument");
 
 	double left_val = eval_retrieve_number(left_nv);
 	double right_val = eval_retrieve_number(right_nv);
 
-	NovaValueType type = eval_dominant_type(left_nv.type, right_nv.type);
+	SmolValueType type = eval_dominant_type(left_nv.type, right_nv.type);
 
-	NovaValue result = NovaValue{type};
+	SmolValue result = SmolValue{type};
 	result.index = eval_push_number_from_type(type, left_val / right_val);
 	
 	return result;
 }
 
-NovaValue eval_if(AST_Node node, int env_index) {
-	NovaValue cond = eval_rec(ast_nodes[node.child_start], env_index);
+SmolValue eval_if(AST_Node node, int env_index) {
+	SmolValue cond = eval_rec(ast_nodes[node.child_start], env_index);
 	ASSERT_TYPE("if condition", cond.type, E_CHARLIT, "char");
-	char result = nova_chars[cond.index];
+	char result = smol_chars[cond.index];
 
 	if(result) {
 		// TODO: remove this env after evaluating the result
@@ -526,10 +526,10 @@ NovaValue eval_if(AST_Node node, int env_index) {
 		return eval_else(clause, env_index);
 	}
 	
-	return NovaValue{NovaValueType::E_UNKNOWN};
+	return SmolValue{SmolValueType::E_UNKNOWN};
 }
 
-NovaValue eval_else(AST_Node node, int env_index) {
+SmolValue eval_else(AST_Node node, int env_index) {
 	AST_Node next = ast_nodes[node.child_start];
 
 	if(next.op == OperationType::N_IF) {
@@ -543,18 +543,18 @@ NovaValue eval_else(AST_Node node, int env_index) {
 		return eval_rec(next, local_env_index);
 	}
 	
-	return NovaValue{NovaValueType::E_UNKNOWN};
+	return SmolValue{SmolValueType::E_UNKNOWN};
 }
 
-NovaValue eval_assign(AST_Node node, int env_index) {
-	NovaValue result = NovaValue{NovaValueType::E_UNKNOWN};
+SmolValue eval_assign(AST_Node node, int env_index) {
+	SmolValue result = SmolValue{SmolValueType::E_UNKNOWN};
 
 	AST_Node left = ast_nodes[node.child_start];
 	AST_Node right = ast_nodes[node.child_start+1];
 	if(left.op == OperationType::N_IDENT) {
 		char* name = tokens_ident[left.ttable_index];
 
-		NovaValue nv = envs_search(name, env_index);
+		SmolValue nv = envs_search(name, env_index);
 		ASSERT_UNBOUND(nv, name);
 
 		result = eval_rec(right, env_index);
@@ -564,28 +564,28 @@ NovaValue eval_assign(AST_Node node, int env_index) {
 		AST_Node ident_node = ast_nodes[left.child_start];
 		AST_Node index_node = ast_nodes[left.child_start+1];
 
-		NovaValue size_value = eval_rec(index_node, env_index);
+		SmolValue size_value = eval_rec(index_node, env_index);
 		ASSERT_IS_NUMBER(size_value, "array access");
 		
 		char* name = tokens_ident[ident_node.ttable_index];
-		// int index = nova_integers[size_value.index];
+		// int index = smol_integers[size_value.index];
 		int index = (int)eval_retrieve_number(size_value); 
 
-		NovaValue nv = envs_search(name, env_index);
+		SmolValue nv = envs_search(name, env_index);
 		ASSERT_UNBOUND(nv, name);
 
-		std::vector<NovaValue> vec = nova_arrays[nv.index];
+		std::vector<SmolValue> vec = smol_arrays[nv.index];
 		
 		result = eval_rec(right, env_index);
 
 		// NOTE: seems like we dont need to update an env
-		nova_arrays[nv.index][index] = result;
+		smol_arrays[nv.index][index] = result;
 	}
 
 	return result;
 }
 
-NovaValue eval_for(AST_Node node, int env_index) {
+SmolValue eval_for(AST_Node node, int env_index) {
 	// Variable declaration
 	AST_Node declare = ast_nodes[node.child_start];
 	// Loop termination condition
@@ -598,10 +598,10 @@ NovaValue eval_for(AST_Node node, int env_index) {
 	// Eval the declaration
 	eval_rec(declare, local_env_index);
 	for(;;) {
-		NovaValue cond_nv = eval_rec(cond, local_env_index);
+		SmolValue cond_nv = eval_rec(cond, local_env_index);
 		ASSERT_TYPE("for condition", cond_nv.type, E_CHARLIT, "char");
 
-		char val = nova_chars[cond_nv.index];
+		char val = smol_chars[cond_nv.index];
 
 		// Condition is not accomplished
 		if(val == 0) {
@@ -609,15 +609,15 @@ NovaValue eval_for(AST_Node node, int env_index) {
 		}
 
 		// Evaluated the loop body
-		NovaValue result = eval_rec(block, local_env_index);
+		SmolValue result = eval_rec(block, local_env_index);
 		switch(result.payload) {
-		case NovaPayloadFlag::P_RETURN: {
+		case SmolPayloadFlag::P_RETURN: {
 			return result;
 		} break;
-		case NovaPayloadFlag::P_BREAK: {
-			return NovaValue{NovaValueType::E_UNKNOWN};
+		case SmolPayloadFlag::P_BREAK: {
+			return SmolValue{SmolValueType::E_UNKNOWN};
 		} break;
-		case NovaPayloadFlag::P_CONTINUE: {
+		case SmolPayloadFlag::P_CONTINUE: {
 			// Do nothing, since result's evaluation is already stopped
 		} break;
 		};
@@ -625,245 +625,245 @@ NovaValue eval_for(AST_Node node, int env_index) {
 		eval_rec(post, local_env_index);
 	}
 
-	return NovaValue{NovaValueType::E_UNKNOWN};
+	return SmolValue{SmolValueType::E_UNKNOWN};
 }
 
-NovaValue eval_while(AST_Node node, int env_index) {
+SmolValue eval_while(AST_Node node, int env_index) {
 	AST_Node cond = ast_nodes[node.child_start];
 	AST_Node block = ast_nodes[node.child_start+1];
 
 	int local_env_index = envs_push(env_index);
 
 	for(;;) {
-		NovaValue cond_nv = eval_rec(cond, local_env_index);
+		SmolValue cond_nv = eval_rec(cond, local_env_index);
 		ASSERT_TYPE("for condition", cond_nv.type, E_CHARLIT, "char");
 
-		char val = nova_chars[cond_nv.index];
+		char val = smol_chars[cond_nv.index];
 
 		// Condition accomplished
 		if(val != 0) {
 			break;
 		}
 
-		NovaValue result = eval_rec(block, local_env_index);
+		SmolValue result = eval_rec(block, local_env_index);
 		switch(result.payload) {
-		case NovaPayloadFlag::P_RETURN: {
+		case SmolPayloadFlag::P_RETURN: {
 			return result;
 		} break;
-		case NovaPayloadFlag::P_BREAK: {
-			return NovaValue{NovaValueType::E_UNKNOWN};
+		case SmolPayloadFlag::P_BREAK: {
+			return SmolValue{SmolValueType::E_UNKNOWN};
 		} break;
-		case NovaPayloadFlag::P_CONTINUE: {
+		case SmolPayloadFlag::P_CONTINUE: {
 			// Do nothing, since result's evaluation is already stopped
 		} break;
 		};
 	}
 	
-	return NovaValue{NovaValueType::E_UNKNOWN};
+	return SmolValue{SmolValueType::E_UNKNOWN};
 }
 
 // TODO:
-NovaValue eval_foreach(AST_Node node, int env_index) {
-	return NovaValue{NovaValueType::E_UNKNOWN};
+SmolValue eval_foreach(AST_Node node, int env_index) {
+	return SmolValue{SmolValueType::E_UNKNOWN};
 }
 
-NovaValue eval_array_access(AST_Node node, int env_index) {
+SmolValue eval_array_access(AST_Node node, int env_index) {
 	AST_Node ident_node = ast_nodes[node.child_start];
 	AST_Node index_node = ast_nodes[node.child_start+1];
 
 	char* name = tokens_ident[ident_node.ttable_index];
 	
 	// Eval the index in case of an ident or an expression
-	NovaValue index_value = eval_rec(index_node, env_index);
+	SmolValue index_value = eval_rec(index_node, env_index);
 	ASSERT_IS_NUMBER(index_value, "array access");
 	int index = eval_retrieve_number(index_value);
    
-	NovaValue nv = envs_search(name, env_index);
+	SmolValue nv = envs_search(name, env_index);
 	ASSERT_UNBOUND(nv, "name");
 
-	return nova_arrays[nv.index][index];
+	return smol_arrays[nv.index][index];
 }
 
-NovaValue eval_greater_than(AST_Node node, int env_index) {
+SmolValue eval_greater_than(AST_Node node, int env_index) {
 	AST_Node lhs = ast_nodes[node.child_start];
 	AST_Node rhs = ast_nodes[node.child_start+1];
 
-	NovaValue left_nv = eval_rec(lhs, env_index);
+	SmolValue left_nv = eval_rec(lhs, env_index);
 	ASSERT_IS_NUMBER(left_nv, "> operand");
-	NovaValue right_nv = eval_rec(rhs, env_index);
+	SmolValue right_nv = eval_rec(rhs, env_index);
 	ASSERT_IS_NUMBER(right_nv, "> operand");
 
 	double left_val = eval_retrieve_number(left_nv);
 	double right_val = eval_retrieve_number(right_nv);
 
-	NovaValue result = NovaValue{NovaValueType::E_CHARLIT};
-	result.index = nova_chars_push(left_val > right_val);
+	SmolValue result = SmolValue{SmolValueType::E_CHARLIT};
+	result.index = smol_chars_push(left_val > right_val);
 
 	return result;
 }
 
-NovaValue eval_less_than(AST_Node node, int env_index) {
+SmolValue eval_less_than(AST_Node node, int env_index) {
 	AST_Node lhs = ast_nodes[node.child_start];
 	AST_Node rhs = ast_nodes[node.child_start+1];
 
-	NovaValue left_nv = eval_rec(lhs, env_index);
+	SmolValue left_nv = eval_rec(lhs, env_index);
 	ASSERT_IS_NUMBER(left_nv, "< operand");
-	NovaValue right_nv = eval_rec(rhs, env_index);
+	SmolValue right_nv = eval_rec(rhs, env_index);
 	ASSERT_IS_NUMBER(right_nv, "< operand");
 
 	double left_val = eval_retrieve_number(left_nv);
 	double right_val = eval_retrieve_number(right_nv);
 
-	NovaValue result = NovaValue{NovaValueType::E_CHARLIT};
-	result.index = nova_chars_push(left_val < right_val);
+	SmolValue result = SmolValue{SmolValueType::E_CHARLIT};
+	result.index = smol_chars_push(left_val < right_val);
 
 	return result;
 }
 
-NovaValue eval_greater_than_or_equal(AST_Node node, int env_index) {
+SmolValue eval_greater_than_or_equal(AST_Node node, int env_index) {
 	AST_Node lhs = ast_nodes[node.child_start];
 	AST_Node rhs = ast_nodes[node.child_start+1];
 
-	NovaValue left_nv = eval_rec(lhs, env_index);
+	SmolValue left_nv = eval_rec(lhs, env_index);
 	ASSERT_IS_NUMBER(left_nv, ">= operand");
-	NovaValue right_nv = eval_rec(rhs, env_index);
+	SmolValue right_nv = eval_rec(rhs, env_index);
 	ASSERT_IS_NUMBER(right_nv, ">= operand");
 
 	double left_val = eval_retrieve_number(left_nv);
 	double right_val = eval_retrieve_number(right_nv);
 
-	NovaValue result = NovaValue{NovaValueType::E_CHARLIT};
-	result.index = nova_chars_push(left_val >= right_val);
+	SmolValue result = SmolValue{SmolValueType::E_CHARLIT};
+	result.index = smol_chars_push(left_val >= right_val);
 
 	return result;
 }
 
-NovaValue eval_less_than_or_equal(AST_Node node, int env_index) {
+SmolValue eval_less_than_or_equal(AST_Node node, int env_index) {
 	AST_Node lhs = ast_nodes[node.child_start];
 	AST_Node rhs = ast_nodes[node.child_start+1];
 
-	NovaValue left_nv = eval_rec(lhs, env_index);
+	SmolValue left_nv = eval_rec(lhs, env_index);
 	ASSERT_IS_NUMBER(left_nv, "<= operand");
-	NovaValue right_nv = eval_rec(rhs, env_index);
+	SmolValue right_nv = eval_rec(rhs, env_index);
 	ASSERT_IS_NUMBER(right_nv, "<= operand");
 
 	double left_val = eval_retrieve_number(left_nv);
 	double right_val = eval_retrieve_number(right_nv);
 
-	NovaValue result = NovaValue{NovaValueType::E_CHARLIT};
-	result.index = nova_chars_push(left_val <= right_val);
+	SmolValue result = SmolValue{SmolValueType::E_CHARLIT};
+	result.index = smol_chars_push(left_val <= right_val);
 
 	return result;
 }
 
-NovaValue eval_equals(AST_Node node, int env_index) {
+SmolValue eval_equals(AST_Node node, int env_index) {
 	AST_Node lhs = ast_nodes[node.child_start];
 	AST_Node rhs = ast_nodes[node.child_start+1];
 
-	NovaValue left_nv = eval_rec(lhs, env_index);
+	SmolValue left_nv = eval_rec(lhs, env_index);
 	ASSERT_IS_NUMBER(left_nv, "== operand");
-	NovaValue right_nv = eval_rec(rhs, env_index);
+	SmolValue right_nv = eval_rec(rhs, env_index);
 	ASSERT_IS_NUMBER(right_nv, "== operand");
 
 	double left_val = eval_retrieve_number(left_nv);
 	double right_val = eval_retrieve_number(right_nv);
 
-	NovaValue result = NovaValue{NovaValueType::E_CHARLIT};
-	result.index = nova_chars_push(left_val == right_val);
+	SmolValue result = SmolValue{SmolValueType::E_CHARLIT};
+	result.index = smol_chars_push(left_val == right_val);
 
 	return result;
 }
 
-NovaValue eval_not_equals(AST_Node node, int env_index) {
+SmolValue eval_not_equals(AST_Node node, int env_index) {
 	AST_Node lhs = ast_nodes[node.child_start];
 	AST_Node rhs = ast_nodes[node.child_start+1];
 
-	NovaValue left_nv = eval_rec(lhs, env_index);
+	SmolValue left_nv = eval_rec(lhs, env_index);
 	ASSERT_IS_NUMBER(left_nv, "!= operand");
-	NovaValue right_nv = eval_rec(rhs, env_index);
+	SmolValue right_nv = eval_rec(rhs, env_index);
 	ASSERT_IS_NUMBER(right_nv, "!= operand");
 
 	double left_val = eval_retrieve_number(left_nv);
 	double right_val = eval_retrieve_number(right_nv);
 
-	NovaValue result = NovaValue{NovaValueType::E_CHARLIT};
-	result.index = nova_chars_push(left_val != right_val);
+	SmolValue result = SmolValue{SmolValueType::E_CHARLIT};
+	result.index = smol_chars_push(left_val != right_val);
 
 	return result;
 }
 
-NovaValue eval_not(AST_Node node, int env_index) {
+SmolValue eval_not(AST_Node node, int env_index) {
 	AST_Node exp = ast_nodes[node.child_start];
 
-	NovaValue nv = eval_rec(exp, env_index);
+	SmolValue nv = eval_rec(exp, env_index);
 	ASSERT_TYPE("! argument", nv.type, E_CHARLIT, "char");
 
-	char val = nova_chars[nv.index];
+	char val = smol_chars[nv.index];
 
-	NovaValue result = NovaValue{NovaValueType::E_CHARLIT};
+	SmolValue result = SmolValue{SmolValueType::E_CHARLIT};
 	// Invert the result
 	if(val == 0) {
-		result.index = nova_chars_push(1);
+		result.index = smol_chars_push(1);
 	} else {
-		result.index = nova_chars_push(0);
+		result.index = smol_chars_push(0);
 	}
 
 	return result;
 }
 
-NovaValue eval_and(AST_Node node, int env_index) {
+SmolValue eval_and(AST_Node node, int env_index) {
 	AST_Node left = ast_nodes[node.child_start];
 	AST_Node right = ast_nodes[node.child_start+1];
 
-	NovaValue left_nv = eval_rec(left, env_index);
+	SmolValue left_nv = eval_rec(left, env_index);
 	ASSERT_TYPE("and argument", left_nv.type, E_CHARLIT, "char");
-	NovaValue right_nv = eval_rec(right, env_index);
+	SmolValue right_nv = eval_rec(right, env_index);
 	ASSERT_TYPE("and argument", right_nv.type, E_CHARLIT, "char");
 
-	char left_result = nova_chars[left_nv.index];
-	char right_result = nova_chars[right_nv.index];
+	char left_result = smol_chars[left_nv.index];
+	char right_result = smol_chars[right_nv.index];
 
-	NovaValue result = NovaValue{NovaValueType::E_CHARLIT};
+	SmolValue result = SmolValue{SmolValueType::E_CHARLIT};
 	if(left_result == 0 || right_result == 0) {
-		result.index = nova_chars_push(0);
+		result.index = smol_chars_push(0);
 	} else {
-		result.index = nova_chars_push(1);
+		result.index = smol_chars_push(1);
 	}
 
 	return result;
 }
 
-NovaValue eval_or(AST_Node node, int env_index) {
+SmolValue eval_or(AST_Node node, int env_index) {
 	AST_Node left = ast_nodes[node.child_start];
 	AST_Node right = ast_nodes[node.child_start+1];
 
-	NovaValue left_nv = eval_rec(left, env_index);
+	SmolValue left_nv = eval_rec(left, env_index);
 	ASSERT_TYPE("or argument", left_nv.type, E_CHARLIT, "char");
-	NovaValue right_nv = eval_rec(right, env_index);
+	SmolValue right_nv = eval_rec(right, env_index);
 	ASSERT_TYPE("or argument", right_nv.type, E_CHARLIT, "char");
 
-	char left_result = nova_chars[left_nv.index];
-	char right_result = nova_chars[right_nv.index];
+	char left_result = smol_chars[left_nv.index];
+	char right_result = smol_chars[right_nv.index];
 
-	NovaValue result = NovaValue{NovaValueType::E_CHARLIT};
+	SmolValue result = SmolValue{SmolValueType::E_CHARLIT};
 	if(left_result == 0 && right_result == 0) {
-		result.index = nova_chars_push(0);
+		result.index = smol_chars_push(0);
 	} else {
-		result.index = nova_chars_push(1);
+		result.index = smol_chars_push(1);
 	}
 
 	return result;
 }
 
-NovaValue eval_post_increment(AST_Node node, int env_index) {
+SmolValue eval_post_increment(AST_Node node, int env_index) {
 	// TODO: this may not be an identifier (5++)
 	char* name = tokens_ident[node.ttable_index];
 	
 	// Search in the current env
-	NovaValue nv = envs_search(name, env_index);
+	SmolValue nv = envs_search(name, env_index);
 	ASSERT_UNBOUND(nv, name);
 	
-	NovaValue result = NovaValue{nv.type};
+	SmolValue result = SmolValue{nv.type};
 	ASSERT_IS_NUMBER(result, "increment value");
 	double val = eval_retrieve_number(nv);
 
@@ -876,15 +876,15 @@ NovaValue eval_post_increment(AST_Node node, int env_index) {
 	return result;
 }
 
-NovaValue eval_post_decrement(AST_Node node, int env_index) {
+SmolValue eval_post_decrement(AST_Node node, int env_index) {
 	// TODO: this may not be an identifier (5--)
 	char* name = tokens_ident[node.ttable_index];
 	
 	// Search in the current env
-	NovaValue nv = envs_search(name, env_index);
+	SmolValue nv = envs_search(name, env_index);
 	ASSERT_UNBOUND(nv, name);
 
-	NovaValue result = NovaValue{nv.type};
+	SmolValue result = SmolValue{nv.type};
 	ASSERT_IS_NUMBER(result, "decrement value");
 	double val = eval_retrieve_number(nv);
 
@@ -897,84 +897,84 @@ NovaValue eval_post_decrement(AST_Node node, int env_index) {
 	return result;
 }
 
-NovaValue eval_print(AST_Node node, int env_index) {
+SmolValue eval_print(AST_Node node, int env_index) {
 	AST_Node child = ast_nodes[node.child_start];
 	
-	NovaValue nv = eval_rec(child, env_index);
+	SmolValue nv = eval_rec(child, env_index);
 
 	switch(nv.type) {
-	case NovaValueType::E_INTLIT: {
-		printf("%d\n", nova_integers[nv.index]);
+	case SmolValueType::E_INTLIT: {
+		printf("%d\n", smol_integers[nv.index]);
 	} break;
-	case NovaValueType::E_FLOATLIT: {
-		printf("%f\n", nova_floats[nv.index]);
+	case SmolValueType::E_FLOATLIT: {
+		printf("%f\n", smol_floats[nv.index]);
 	} break;
-	case NovaValueType::E_CHARLIT: {
-		printf("%c\n", nova_chars[nv.index]);
+	case SmolValueType::E_CHARLIT: {
+		printf("%c\n", smol_chars[nv.index]);
 	} break;
-	case NovaValueType::E_STRINGLIT: {
-		printf("%s\n", nova_strings[nv.index].c_str());
+	case SmolValueType::E_STRINGLIT: {
+		printf("%s\n", smol_strings[nv.index].c_str());
 	} break;
 		// TODO: print an array
 	};
 	
-	return NovaValue{NovaValueType::E_UNKNOWN};
+	return SmolValue{SmolValueType::E_UNKNOWN};
 }
 
-NovaValueType eval_ottonvt(OperationType type) {
+SmolValueType eval_ottonvt(OperationType type) {
 	switch(type) {
 	case OperationType::N_INT: {
-		return NovaValueType::E_INT;
+		return SmolValueType::E_INT;
 	} break;
 	case OperationType::N_CHAR: {
-		return NovaValueType::E_CHAR;
+		return SmolValueType::E_CHAR;
 	} break;
 	case OperationType::N_FLOAT: {
-		return NovaValueType::E_FLOAT;
+		return SmolValueType::E_FLOAT;
 	} break;
 	case OperationType::N_STRING: {
-		return NovaValueType::E_STRING;
+		return SmolValueType::E_STRING;
 	} break;
 		// TODO: should there be an array?
 	};
 
-	return NovaValueType::E_UNKNOWN;
+	return SmolValueType::E_UNKNOWN;
 }
 
-double eval_retrieve_number(NovaValue nv) {
+double eval_retrieve_number(SmolValue nv) {
 	double val;
 	switch(nv.type) {
-	case NovaValueType::E_INTLIT: {
-		val = nova_integers[nv.index];
+	case SmolValueType::E_INTLIT: {
+		val = smol_integers[nv.index];
 	} break;
-	case NovaValueType::E_FLOATLIT: {
-		val = nova_floats[nv.index];
+	case SmolValueType::E_FLOATLIT: {
+		val = smol_floats[nv.index];
 	} break;
-	case NovaValueType::E_CHARLIT: {
-		val = nova_chars[nv.index];
+	case SmolValueType::E_CHARLIT: {
+		val = smol_chars[nv.index];
 	} break;
 	};
 
 	return val;
 }
 
-int eval_push_number_from_type(NovaValueType type, double value) {
+int eval_push_number_from_type(SmolValueType type, double value) {
 	switch(type) {
-	case NovaValueType::E_INTLIT: {
-		return nova_integers_push(value);
+	case SmolValueType::E_INTLIT: {
+		return smol_integers_push(value);
 	} break;
-	case NovaValueType::E_FLOATLIT: {
-		return nova_floats_push(value);
+	case SmolValueType::E_FLOATLIT: {
+		return smol_floats_push(value);
 	} break;
-	case NovaValueType::E_CHARLIT: {
-		return nova_chars_push(value);
+	case SmolValueType::E_CHARLIT: {
+		return smol_chars_push(value);
 	} break;
 	};
 
 	return -1;
 }
 
-NovaValueType eval_dominant_type(NovaValueType left, NovaValueType right) {
+SmolValueType eval_dominant_type(SmolValueType left, SmolValueType right) {
 	if(left > right)
 		return left;
 

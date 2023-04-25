@@ -1,12 +1,12 @@
 #+STARTUP: overview 
 #+PROPERTY: header-args :comments yes :results silent
 #+OPTIONS: \n:t
-* Nova
-Nova is a simple and efficient statically typed programming language. Currently under development.
+* Smollett
+Smollet is a simple and efficient statically typed programming language. Currently under development.
 * Syntax
 ** Imports
 #+BEGIN_SRC
-import "file.nova";
+import "file.smol";
 #+END_SRC
 ** Variable declaration
 #+BEGIN_SRC

@@ -591,11 +591,6 @@ AST_Node for_statement() {
     nodes.push_back(binexpr(0));
     rparen();
     
-    if (token->type == T_IDENT) {
-	nodes.push_back(makenode(N_IDENT, token->table_index, 0, -1));
-	nextt();
-    }
-
     nodes.push_back(block());
 
     int start = ast_push(nodes);

@@ -38,7 +38,7 @@ comment
 #+BEGIN_SRC
 struct Player {
 	using GameObject;
-	GameObject object;
+	object: GameObject;
 	fun update() -> void {}
 }
 
@@ -54,15 +54,9 @@ var arr2[4] : int {};
 ** Loops
 #+BEGIN_SRC
 for (var i = 0; i < 10; ++i) {}
-for (var i = 0; i < 10; ++i) outer { // named loop
-	for (var j = 0; j < 10; ++j) {
-		break outer;
-	}
-}
 
 foreach (var v in arr1) {}
 foreach (var v, i in arr2) {}
 
 while (true) {}
-do {} (while) true;
 #+END_SRC

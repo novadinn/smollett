@@ -55,10 +55,10 @@ const int opprec[] = {
 
 void print_node(AST_Node* node) {       
     printf("OperationType: %s\n", nodestr[(int)node->op]);    
-    printf("Childs num: %d\n", node->child_num);
+    // printf("Childs num: %d\n", node->child_num);
     // printf("Start: %d\n", node->child_start);
     // printf("Index: %d\n", node->atable_index);
-    printf("Index: %d\n", node->ttable_index);
+    // printf("Index: %d\n", node->ttable_index);
     
     for (int j = 0; j < node->child_num; ++j) {
 	print_node(&ast_nodes[node->child_start + j]);
@@ -318,7 +318,7 @@ AST_Node postfix() {
 	node = makenode(N_MEMBAC, index, 1, ast_push(postfix()));
 	break;
     case T_LBRACE:	
-	node = makenode(N_STRUCTINIT, index, 1, ast_push(structlit_declaration()));
+	node = makenode(N_STRUCTINIT, index, 1, ast_push(structlit()));
 	break;
     default: node = makenode(N_IDENT, index, 0, -1);
     }
@@ -349,8 +349,8 @@ AST_Node literal() {
 
 	rparen();
 	return node;
-    case T_LBRACE:
-	node = structlit_declaration();
+    case T_LBRACE:	       
+	node = structlit();	
 	return node;
     case T_PRINT:
 	node = print_statement();
@@ -830,9 +830,20 @@ AST_Node struct_member_declaration() {
 AST_Node fun_param_declaration() {
     ident();
     int ident_index = token->table_index;
+    bool arr = false;    
     nextt();
 
     std::vector<AST_Node> nodes;
+    std::vector<AST_Node> arr_nodes;
+
+    if (token->type == T_LBRACK) {
+	nextt();
+	if (token->type != T_RBRACK) {
+	    arr_nodes.push_back(binexpr(0));
+	}
+	rbrack();
+	arr = true;
+    }
     
     if (colonb()) {
 	nextt();
@@ -842,7 +853,17 @@ AST_Node fun_param_declaration() {
 
     int start = ast_push(nodes);
     
-    return makenode(N_IDENT, ident_index, nodes.size(), start);
+    AST_Node ident = makenode(N_IDENT, ident_index, nodes.size(), start);
+
+    if (arr) {
+	arr_nodes.push_back(ident);
+
+	int arr_start = ast_push(arr_nodes);
+
+	ident = makenode(N_ARRAY, 0, arr_nodes.size(), arr_start);	
+    }
+
+    return ident;
 }
 
 AST_Node struct_declaration() {
@@ -901,7 +922,7 @@ AST_Node ident_declaration(bool need_type) {
 
 	bool init = false;
 	if (token->type == T_LBRACE) {
-	    arr_nodes.push_back(structlit_declaration());
+	    arr_nodes.push_back(structlit());
 	    init = true;
 	}
 
@@ -933,22 +954,22 @@ AST_Node ident_declaration(bool need_type) {
     return ident;
 }
 
-AST_Node structlit_declaration() {
+AST_Node structlit() {
     lbrace();
 
     std::vector<AST_Node> nodes;
     
     while(1) {
 	if (token->type == T_COMMA) {
-	    nextt();
-	    nodes.push_back(binexpr(0));
+	    nextt();	    
 	} else if (token->type == T_RBRACE) {
-	    nextt();
 	    break;
 	} else {
 	    nodes.push_back(binexpr(0));
 	}	
     }
+
+    rbrace();
 
     int start = ast_push(nodes);
 

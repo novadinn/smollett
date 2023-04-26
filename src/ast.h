@@ -103,8 +103,8 @@ AST_Node struct_member_declaration();
 AST_Node fun_param_declaration();
 AST_Node struct_declaration();
 AST_Node ident_declaration(bool need_type = true);
-AST_Node structlit_declaration();
 
+AST_Node structlit();
 AST_Node block();
 AST_Node type();
 
